@@ -1,0 +1,103 @@
+# =====================================================================
+#  Practikap · .gitignore
+#  Samuel Villarreal Duque
+# =====================================================================
+
+# --- Compilacion .NET ------------------------------------------------
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+[Ll]og/
+[Ll]ogs/
+*.dll
+*.pdb
+*.exe
+*.cache
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.binlog
+
+# --- Visual Studio / VS Code / Rider ---------------------------------
+.vs/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+*.swp
+*~
+
+# --- NuGet ------------------------------------------------------------
+*.nupkg
+*.snupkg
+packages/
+!packages/build/
+.nuget/
+project.lock.json
+project.fragment.lock.json
+
+# --- SECRETOS · RNF-06 ------------------------------------------------
+# Ninguna credencial se versiona. Las variables de entorno del
+# Doc_Tecnico §6.2 se inyectan en el servidor, nunca en el repositorio.
+appsettings.Production.json
+appsettings.Development.local.json
+appsettings.*.local.json
+*.pfx
+*.p12
+*.key
+secrets.json
+.env
+.env.*
+!.env.example
+
+# --- Base de datos ----------------------------------------------------
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.mdf
+*.ldf
+# Volcados locales. El Script_DDL.sql de Info/ SI se versiona.
+dump*.sql
+backup*.sql
+
+# --- Publicacion y despliegue ----------------------------------------
+[Pp]ublish/
+*.[Pp]ublish.xml
+*.azurePubxml
+*.pubxml
+*.pubxml.user
+PublishProfiles/
+
+# --- Frontend (Practikap.Web) -----------------------------------------
+node_modules/
+npm-debug.log*
+yarn-error.log*
+dist/
+.parcel-cache/
+
+# --- Pruebas y cobertura ----------------------------------------------
+[Tt]est[Rr]esult*/
+coverage*.json
+coverage*.xml
+coverage*.info
+*.coverage
+*.trx
+
+# --- Sistema operativo ------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# --- Ofimatica: archivos temporales de Word y Excel -------------------
+# Info/ se versiona completa, pero no los bloqueos de LibreOffice/Office.
+~$*.docx
+~$*.xlsx
+~$*.pptx
+.~lock.*#
