@@ -22,7 +22,8 @@
 
 # --- Visual Studio / VS Code / Rider ---------------------------------
 .vs/
-.vscode/*
+# Nota: Hubo que quitar el * que llevaba al final de la línea para que funcione correctamente el .gitignore en VS Code.
+.vscode/
 !.vscode/settings.json
 !.vscode/extensions.json
 !.vscode/launch.json

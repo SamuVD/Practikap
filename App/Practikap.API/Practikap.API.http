@@ -1,0 +1,6 @@
+@Practikap.API_HostAddress = http://localhost:5285
+
+GET {{Practikap.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
