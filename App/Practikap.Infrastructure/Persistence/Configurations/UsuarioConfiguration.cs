@@ -62,7 +62,7 @@ public class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
         builder.Property(u => u.FechaActualizacion)
                .HasColumnName("fecha_actualizacion")
                .HasColumnType("datetime")
-               .HasDefaultValueSql("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
+               .HasDefaultValueSql("CURRENT_TIMESTAMP")
                .ValueGeneratedOnAddOrUpdate();
 
         // Propiedades calculadas del Dominio: no son columnas.
