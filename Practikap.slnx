@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/App/">
+    <Project Path="App/Practikap.API/Practikap.API.csproj" />
+    <Project Path="App/Practikap.Application/Practikap.Application.csproj" />
+    <Project Path="App/Practikap.Domain/Practikap.Domain.csproj" />
+    <Project Path="App/Practikap.Infrastructure/Practikap.Infrastructure.csproj" />
+  </Folder>
+</Solution>

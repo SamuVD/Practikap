@@ -47,7 +47,7 @@ Practikap.Web  ──HTTP/fetch──▶  Practikap.API
                         (no referencia a nadie)
 ```
 
-`Practikap.Web` **no forma parte de `Practikap.sln`**: es una carpeta de archivos
+`Practikap.Web` **no forma parte de `Practikap.slnx`**: es una carpeta de archivos
 estáticos que se comunica con la API únicamente por HTTP, nunca por referencia de
 proyecto. El patrón MVC se cumple dentro de `Practikap.API`.
 
@@ -59,7 +59,7 @@ Detalle completo en `Info/03_Diseno/Arquitectura/`.
 
 ```
 Practikap/
-├── Practikap.sln
+├── Practikap.slnx
 └── App/
     ├── Practikap.Domain/          Entidades, interfaces, Motor de Reglas
     ├── Practikap.Application/     Casos de uso, DTOs, validadores, mapeos
@@ -67,6 +67,11 @@ Practikap/
     ├── Practikap.API/             Controladores, middlewares, Program.cs
     └── Practikap.Web/             Frontend estático (fuera de la solución)
 ```
+
+> **Formato de la solución.** El SDK .NET 10 genera `.slnx` (XML) por defecto en
+> lugar del `.sln` clásico. Es el formato hacia el que Microsoft está migrando el
+> ecosistema — texto plano, mejores diffs en Git. Todos los comandos `dotnet sln`
+> y `dotnet build` de esta guía funcionan igual con ambos formatos.
 
 > **Documentación en repositorio aparte.** La carpeta `Info/` —requerimientos,
 > matrices, diagramas, actas y demás documentación de gestión— se versiona en un
@@ -85,7 +90,7 @@ dotnet tool install --global dotnet-ef
 
 # 2. Restaurar y compilar
 dotnet restore
-dotnet build Practikap.sln
+dotnet build Practikap.slnx
 
 # 3. Variables de entorno (ver Doc_Tecnico §6.2)
 export ConnectionStrings__MySQL="Server=localhost;Database=practikap;User=app_user;Password=***;"
@@ -95,8 +100,8 @@ export Jwt__ExpirationMinutes="60"
 export CORS__AllowedOrigins="http://localhost:5500"
 
 # 4. Aplicar la migración inicial
-dotnet ef database update \
-  --project        App/Practikap.Infrastructure \
+dotnet ef database update `
+  --project        App/Practikap.Infrastructure `
   --startup-project App/Practikap.API
 
 # 5. Levantar la API
