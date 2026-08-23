@@ -1,8 +1,8 @@
-using System.Reflection;
 using Microsoft.OpenApi;
 using Practikap.API.Middlewares;
 using Practikap.Application;
 using Practikap.Infrastructure;
+using Practikap.Infrastructure.Persistence;
 
 const string PoliticaCors = "FrontendPractikap";
 
@@ -86,6 +86,14 @@ builder.Services.AddSwaggerGen(opciones =>
 });
 
 var app = builder.Build();
+
+// --- Sembrado de cuentas de desarrollo (Ronda 2, Fase 4.1) ------------------
+// Solo en Development y solo si SeedUsuarios existe en la configuracion local.
+// Ver SembradorUsuariosDesarrollo para la logica completa.
+if (app.Environment.IsDevelopment())
+{
+    await SembradorUsuariosDesarrollo.SembrarAsync(app.Services);
+}
 
 // --- Pipeline (Doc_Tecnico 3.1) ---------------------------------------------
 // El orden es normativo. El manejador de errores va primero porque solo captura

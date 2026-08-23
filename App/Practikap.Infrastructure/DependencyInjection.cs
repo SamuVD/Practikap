@@ -81,6 +81,8 @@ public static class DependencyInjection
         // Repositorios concretos: Fase 4, uno por modulo. La unica excepcion es
         // TokenRevocadoRepository, que consume el pipeline y no un caso de uso.
         services.AddScoped<ITokenRevocadoRepository, TokenRevocadoRepository>();
+        services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+        services.AddScoped<IRolRepository, RolRepository>();
 
         var opcionesJwt = OpcionesJwt.Leer(configuration);
         services.AddSingleton(opcionesJwt);
