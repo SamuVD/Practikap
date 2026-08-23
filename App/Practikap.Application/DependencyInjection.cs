@@ -1,6 +1,7 @@
 using AutoMapper;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using Practikap.Application.UseCases.Autenticacion;
 
 namespace Practikap.Application;
 
@@ -32,6 +33,12 @@ public static class DependencyInjection
 
         services.AddAutoMapper(configuracion => configuracion.AddMaps(ensamblado));
         services.AddValidatorsFromAssembly(ensamblado, includeInternalTypes: true);
+
+        // Casos de uso, uno por uno y con alcance Scoped: dependen de
+        // repositorios que comparten el DbContext de la peticion (ADR-02).
+        // Modulo M1 - Autenticacion.
+        services.AddScoped<IniciarSesionUseCase>();
+        services.AddScoped<CerrarSesionUseCase>();
 
         return services;
     }

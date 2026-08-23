@@ -93,6 +93,9 @@ public sealed class MiddlewareDeErrores
             ConflictoException => (
                 StatusCodes.Status409Conflict, excepcion.Message, Vacio),
 
+            CredencialesInvalidasException => (
+                StatusCodes.Status401Unauthorized, excepcion.Message, Vacio),
+
             AutorizacionException => (
                 StatusCodes.Status403Forbidden, excepcion.Message, Vacio),
 
