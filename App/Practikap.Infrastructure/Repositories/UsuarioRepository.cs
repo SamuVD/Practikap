@@ -43,9 +43,19 @@ internal sealed class UsuarioRepository : IUsuarioRepository
             .AnyAsync(u => u.Correo == correo.Trim().ToLowerInvariant(), ct);
 
     /// <inheritdoc />
+    /// <remarks>Incluye el Rol: la proyeccion a UsuarioResponse aplana su nombre.</remarks>
+    public async Task<IReadOnlyList<Usuario>> ListarTodosAsync(CancellationToken ct) =>
+        await _contexto.Usuarios
+            .AsNoTracking()
+            .Include(u => u.Rol)
+            .OrderBy(u => u.Apellido).ThenBy(u => u.Nombre)
+            .ToListAsync(ct);
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<Usuario>> ListarPorRolAsync(int rolId, CancellationToken ct) =>
         await _contexto.Usuarios
             .AsNoTracking()
+            .Include(u => u.Rol)
             .Where(u => u.RolId == rolId)
             .OrderBy(u => u.Apellido).ThenBy(u => u.Nombre)
             .ToListAsync(ct);

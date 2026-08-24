@@ -2,6 +2,8 @@ using AutoMapper;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Practikap.Application.UseCases.Autenticacion;
+using Practikap.Application.UseCases.Roles;
+using Practikap.Application.UseCases.Usuarios;
 
 namespace Practikap.Application;
 
@@ -39,6 +41,16 @@ public static class DependencyInjection
         // Modulo M1 - Autenticacion.
         services.AddScoped<IniciarSesionUseCase>();
         services.AddScoped<CerrarSesionUseCase>();
+        // Modulo M1 - Usuarios y roles.
+        services.AddScoped<ListarUsuariosUseCase>();
+        services.AddScoped<ObtenerUsuarioUseCase>();
+        services.AddScoped<CrearUsuarioUseCase>();
+        services.AddScoped<ActualizarPerfilUseCase>();
+        services.AddScoped<CambiarContrasenaUseCase>();
+        services.AddScoped<RestablecerContrasenaUseCase>();
+        services.AddScoped<CambiarRolUseCase>();
+        services.AddScoped<CambiarEstadoUsuarioUseCase>();
+        services.AddScoped<ListarRolesUseCase>();
 
         return services;
     }
