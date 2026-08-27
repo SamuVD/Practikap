@@ -17,6 +17,12 @@ namespace Practikap.Application.UseCases.Usuarios;
 ///
 /// Una cuenta desactivada deja de poder iniciar sesion, pero su token vigente
 /// sigue siendo valido hasta expirar (FA-20).
+///
+/// Es el unico caso de uso del modulo M1 que no inyecta IValidator&lt;TRequest&gt;.
+/// Es una desviacion intencional de la decision D3, no un olvido:
+/// CambiarEstadoRequest declara un unico bool obligatorio y el enlace de modelo
+/// de ASP.NET Core ya rechaza cualquier cuerpo que no lo traiga. Un validador
+/// aqui no tendria ninguna regla que declarar.
 /// </remarks>
 public sealed class CambiarEstadoUsuarioUseCase
 {

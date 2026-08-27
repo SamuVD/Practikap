@@ -23,11 +23,11 @@ public static class DependencyInjection
     /// <remarks>
     /// El registro es por escaneo de ensamblado y no por enumeracion manual: cada
     /// modulo de la Fase 4 agrega sus perfiles y validadores sin tocar este
-    /// archivo, que es el criterio de aceptacion de RNF-09. Hoy el escaneo no
-    /// encuentra nada, y eso es correcto: la capa aun no tiene casos de uso.
+    /// archivo, que es el criterio de aceptacion de RNF-09. El escaneo ya
+    /// encuentra los perfiles y validadores del modulo M1.
     ///
-    /// Los casos de uso se registran aqui uno por uno a partir de la Fase 4.1,
-    /// con alcance Scoped, porque dependen del DbContext (ADR-02).
+    /// Los casos de uso si se enumeran uno por uno, con alcance Scoped, porque
+    /// dependen del DbContext (ADR-02). El modulo M1 aporta los once primeros.
     /// </remarks>
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
