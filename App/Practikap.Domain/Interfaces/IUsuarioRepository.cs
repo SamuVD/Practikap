@@ -28,6 +28,15 @@ public interface IUsuarioRepository
     /// <returns>true si el correo ya existe; false en caso contrario.</returns>
     Task<bool> ExisteCorreoAsync(string correo, CancellationToken ct);
 
+    /// <summary>Lista todos los usuarios del sistema.</summary>
+    /// <param name="ct">Token de cancelacion de la solicitud.</param>
+    /// <returns>Coleccion de solo lectura con todos los usuarios.</returns>
+    /// <remarks>
+    /// Alcance Global de RN-13: solo el Administrador puede consumirla. El caso
+    /// de uso comprueba el rol antes de llamarla.
+    /// </remarks>
+    Task<IReadOnlyList<Usuario>> ListarTodosAsync(CancellationToken ct);
+
     /// <summary>Lista los usuarios que tienen un rol determinado.</summary>
     /// <param name="rolId">Rol por el que se filtra.</param>
     /// <param name="ct">Token de cancelacion de la solicitud.</param>

@@ -10,7 +10,9 @@ namespace Practikap.API.Controllers;
 /// la autorizacion por rol, CORS y el contrato de error responden como se espera.
 /// </summary>
 /// <remarks>
-/// Los endpoints marcados como solo desarrollo se eliminan en la Fase 4.1.
+/// Los dos endpoints de solo desarrollo que tuvo esta clase (token-de-prueba y
+/// error) se eliminaron en la Ronda 3 de la Fase 4.1, al existir el caso de uso
+/// real de inicio de sesion (FA-04). Los tres restantes son permanentes.
 /// </remarks>
 [ApiController]
 [Route("api/salud")]
@@ -57,49 +59,4 @@ public sealed class SaludController : ControllerBase
     [HttpGet("admin")]
     [Authorize(Roles = "Administrador")]
     public IActionResult SoloAdministrador() => Ok(new { mensaje = "Acceso concedido al rol Administrador." });
-
-    /// <summary>
-    /// SOLO DESARROLLO. Emite un token de prueba para verificar el pipeline sin
-    /// exponer la clave de firma en herramientas externas. Se elimina en la
-    /// Fase 4.1, cuando exista el caso de uso real de inicio de sesion.
-    /// </summary>
-    /// <param name="generador">Emisor de tokens.</param>
-    /// <param name="rol">Rol que llevara el token. Administrador por defecto.</param>
-    /// <param name="usuarioId">Identificador que ira en el claim sub.</param>
-    /// <returns>El token emitido y su referencia.</returns>
-    [HttpGet("token-de-prueba")]
-    [AllowAnonymous]
-    public IActionResult TokenDePrueba(
-        [FromServices] IGeneradorDeToken generador,
-        [FromQuery] string rol = "Administrador",
-        [FromQuery] int usuarioId = 1)
-    {
-        if (!_entorno.IsDevelopment())
-            return NotFound();
-
-        var emitido = generador.Generar(usuarioId, "prueba@practikap.local", rol);
-
-        return Ok(new
-        {
-            token = emitido.Token,
-            referenciaToken = emitido.ReferenciaToken,
-            expiraEn = emitido.ExpiraEn
-        });
-    }
-
-    /// <summary>
-    /// SOLO DESARROLLO. Lanza una excepcion no controlada para comprobar que el
-    /// middleware global responde 500 con el contrato uniforme y sin filtrar la
-    /// pila de llamadas. Se elimina en la Fase 4.1.
-    /// </summary>
-    /// <returns>Nunca retorna.</returns>
-    [HttpGet("error")]
-    [AllowAnonymous]
-    public IActionResult Error()
-    {
-        if (!_entorno.IsDevelopment())
-            return NotFound();
-
-        throw new InvalidOperationException("Fallo simulado para verificar el middleware global de errores.");
-    }
 }

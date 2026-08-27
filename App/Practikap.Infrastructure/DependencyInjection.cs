@@ -74,9 +74,15 @@ public static class DependencyInjection
         services.AddDbContext<PractikapDbContext>(opciones =>
             opciones.UseMySql(cadena, VersionServidor));
 
+        // Unidad de trabajo (ADR-02): punto unico de confirmacion de la peticion.
+        // Comparte el alcance Scoped del DbContext, del que toma la instancia.
+        services.AddScoped<IUnidadDeTrabajo, UnidadDeTrabajo>();
+
         // Repositorios concretos: Fase 4, uno por modulo. La unica excepcion es
         // TokenRevocadoRepository, que consume el pipeline y no un caso de uso.
         services.AddScoped<ITokenRevocadoRepository, TokenRevocadoRepository>();
+        services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+        services.AddScoped<IRolRepository, RolRepository>();
 
         var opcionesJwt = OpcionesJwt.Leer(configuration);
         services.AddSingleton(opcionesJwt);
@@ -84,12 +90,10 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddScoped<IContextoUsuario, ContextoUsuario>();
         services.AddScoped<IGeneradorDeToken, GeneradorDeTokenJwt>();
+        services.AddScoped<IServicioDeHash, HasherBCrypt>();
 
         RegistrarAutenticacion(services, opcionesJwt);
         services.AddAuthorization();
-
-        // Servicio de hash BCrypt (RNF-05): Fase 4.1, junto al caso de uso de
-        // inicio de sesion que es su unico consumidor.
 
         return services;
     }

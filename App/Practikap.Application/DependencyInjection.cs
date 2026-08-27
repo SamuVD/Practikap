@@ -1,6 +1,9 @@
 using AutoMapper;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using Practikap.Application.UseCases.Autenticacion;
+using Practikap.Application.UseCases.Roles;
+using Practikap.Application.UseCases.Usuarios;
 
 namespace Practikap.Application;
 
@@ -20,11 +23,11 @@ public static class DependencyInjection
     /// <remarks>
     /// El registro es por escaneo de ensamblado y no por enumeracion manual: cada
     /// modulo de la Fase 4 agrega sus perfiles y validadores sin tocar este
-    /// archivo, que es el criterio de aceptacion de RNF-09. Hoy el escaneo no
-    /// encuentra nada, y eso es correcto: la capa aun no tiene casos de uso.
+    /// archivo, que es el criterio de aceptacion de RNF-09. El escaneo ya
+    /// encuentra los perfiles y validadores del modulo M1.
     ///
-    /// Los casos de uso se registran aqui uno por uno a partir de la Fase 4.1,
-    /// con alcance Scoped, porque dependen del DbContext (ADR-02).
+    /// Los casos de uso si se enumeran uno por uno, con alcance Scoped, porque
+    /// dependen del DbContext (ADR-02). El modulo M1 aporta los once primeros.
     /// </remarks>
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
@@ -32,6 +35,22 @@ public static class DependencyInjection
 
         services.AddAutoMapper(configuracion => configuracion.AddMaps(ensamblado));
         services.AddValidatorsFromAssembly(ensamblado, includeInternalTypes: true);
+
+        // Casos de uso, uno por uno y con alcance Scoped: dependen de
+        // repositorios que comparten el DbContext de la peticion (ADR-02).
+        // Modulo M1 - Autenticacion.
+        services.AddScoped<IniciarSesionUseCase>();
+        services.AddScoped<CerrarSesionUseCase>();
+        // Modulo M1 - Usuarios y roles.
+        services.AddScoped<ListarUsuariosUseCase>();
+        services.AddScoped<ObtenerUsuarioUseCase>();
+        services.AddScoped<CrearUsuarioUseCase>();
+        services.AddScoped<ActualizarPerfilUseCase>();
+        services.AddScoped<CambiarContrasenaUseCase>();
+        services.AddScoped<RestablecerContrasenaUseCase>();
+        services.AddScoped<CambiarRolUseCase>();
+        services.AddScoped<CambiarEstadoUsuarioUseCase>();
+        services.AddScoped<ListarRolesUseCase>();
 
         return services;
     }
