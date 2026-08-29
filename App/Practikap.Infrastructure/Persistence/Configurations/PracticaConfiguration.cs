@@ -6,8 +6,10 @@ namespace Practikap.Infrastructure.Persistence.Configurations;
 
 /// <summary>Mapeo de <see cref="Practica"/> sobre la tabla practicas.</summary>
 /// <remarks>
-/// El instructor y el aprendiz se declaran como claves foraneas sin propiedad
-/// de navegacion, porque la entidad del Dominio solo guarda sus identificadores.
+/// El instructor y el aprendiz se mapean sobre las claves foraneas existentes y
+/// exponen navegacion hacia Usuario (H6), lo que permite aplanar el nombre de
+/// cada participante en una sola consulta. La navegacion no altera el modelo
+/// relacional: el esquema es identico al que genero la migracion inicial.
 /// Las dos restricciones CHECK del Script_DDL.sql se replican aqui para que la
 /// base de datos siga siendo la ultima linea de defensa de RN-04 y de la
 /// coherencia entre modalidad y empresa, aunque la entidad ya las valide.
@@ -23,10 +25,12 @@ public class PracticaConfiguration : IEntityTypeConfiguration<Practica>
                    "chk_practicas_fechas",
                    "fecha_fin IS NULL OR fecha_fin >= fecha_inicio");
 
+                     // H22: Monitoria se desarrolla dentro del centro de formacion
+                     // y no admite empresa receptora, igual que Proyecto productivo.
                      t.HasCheckConstraint(
                    "chk_practicas_empresa_modalidad",
-                   "(modalidad = 'Proyecto productivo' AND empresa_id IS NULL) " +
-                   "OR (modalidad <> 'Proyecto productivo' AND empresa_id IS NOT NULL)");
+                   "(modalidad IN ('Proyecto productivo','Monitoría') AND empresa_id IS NULL) " +
+                   "OR (modalidad NOT IN ('Proyecto productivo','Monitoría') AND empresa_id IS NOT NULL)");
               });
 
               builder.HasKey(p => p.Id);
@@ -106,13 +110,13 @@ public class PracticaConfiguration : IEntityTypeConfiguration<Practica>
                      .HasConstraintName("fk_practicas_empresa")
                      .OnDelete(DeleteBehavior.Restrict);
 
-              builder.HasOne<Usuario>()
+              builder.HasOne(p => p.Instructor)
                      .WithMany()
                      .HasForeignKey(p => p.InstructorId)
                      .HasConstraintName("fk_practicas_instructor")
                      .OnDelete(DeleteBehavior.Restrict);
 
-              builder.HasOne<Usuario>()
+              builder.HasOne(p => p.Aprendiz)
                      .WithMany()
                      .HasForeignKey(p => p.AprendizId)
                      .HasConstraintName("fk_practicas_aprendiz")

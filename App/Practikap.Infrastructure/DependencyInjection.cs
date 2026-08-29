@@ -84,6 +84,13 @@ public static class DependencyInjection
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<IRolRepository, RolRepository>();
 
+        // Modulo M3. IProgramaRepository se registra aqui una sola vez: lo
+        // consumen M3, que consulta, y M8, que administra.
+        services.AddScoped<IPracticaRepository, PracticaRepository>();
+        services.AddScoped<IFichaRepository, FichaRepository>();
+        services.AddScoped<IEmpresaRepository, EmpresaRepository>();
+        services.AddScoped<IProgramaRepository, ProgramaRepository>();
+
         var opcionesJwt = OpcionesJwt.Leer(configuration);
         services.AddSingleton(opcionesJwt);
 
