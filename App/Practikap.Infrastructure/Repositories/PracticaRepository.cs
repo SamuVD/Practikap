@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Practikap.Domain.Entities;
 using Practikap.Domain.Enums;
-using Practikap.Domain.Exceptions;
 using Practikap.Domain.Interfaces;
 using Practikap.Infrastructure.Persistence;
 
@@ -79,31 +78,24 @@ internal sealed class PracticaRepository : IPracticaRepository
 
     /// <inheritdoc />
     /// <remarks>
-    /// Invoca el metodo de dominio, que es quien evalua RN-05. El flag va en true
-    /// porque H17 reserva PATCH /api/practicas/{id}/estado al Administrador, unico
-    /// rol autorizado a retroceder un estado. El Motor de Reglas del paso 4.7 no
-    /// pasa por aqui: usa Practica.MarcarEnRiesgo sobre la entidad (H9).
-    /// Sigue el patron de UsuarioRepository.CambiarRolAsync.
+    /// El caso de uso tipico obtiene la practica con ObtenerPorIdAsync (queda
+    /// rastreada), la modifica con sus metodos de dominio y EF Core detecta el
+    /// cambio sin llamada adicional. Este metodo solo actua cuando la practica
+    /// llega desatada, para no depender de que el llamador siempre use la
+    /// instancia rastreada. Mismo criterio que UsuarioRepository.ActualizarAsync.
+    ///
+    /// H28 lo puso en lugar de ActualizarEstadoAsync y ReasignarAsync, que
+    /// invocaban Practica.CambiarEstado y Practica.Reasignar desde dentro del
+    /// repositorio. El primero ademas cableaba esAdministrador en true, lo que
+    /// metia una decision de autorizacion en una capa que no conoce
+    /// IContextoUsuario y solo era correcto mientras H17 siguiera vigente.
     /// </remarks>
-    public async Task ActualizarEstadoAsync(int id, EstadoPractica estado, CancellationToken ct)
+    public Task ActualizarAsync(Practica practica, CancellationToken ct)
     {
-        var practica = await _contexto.Practicas.FindAsync(new object?[] { id }, ct)
-            ?? throw new NoEncontradoException($"No existe una practica con Id {id}.");
+        if (_contexto.Entry(practica).State == EntityState.Detached)
+            _contexto.Practicas.Update(practica);
 
-        practica.CambiarEstado(estado, esAdministrador: true);
-    }
-
-    /// <inheritdoc />
-    /// <remarks>
-    /// La verificacion de practica activa duplicada que exige RN-04 no ocurre
-    /// aqui sino en el caso de uso, y solo si el aprendiz cambia (H5).
-    /// </remarks>
-    public async Task ReasignarAsync(int id, int instructorId, int aprendizId, CancellationToken ct)
-    {
-        var practica = await _contexto.Practicas.FindAsync(new object?[] { id }, ct)
-            ?? throw new NoEncontradoException($"No existe una practica con Id {id}.");
-
-        practica.Reasignar(instructorId, aprendizId);
+        return Task.CompletedTask;
     }
 
     /// <summary>

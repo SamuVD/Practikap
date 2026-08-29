@@ -1,5 +1,4 @@
 using Practikap.Domain.Entities;
-using Practikap.Domain.Enums;
 
 namespace Practikap.Domain.Interfaces;
 
@@ -49,22 +48,19 @@ public interface IPracticaRepository
     /// <returns>Identificador asignado a la practica.</returns>
     Task<int> AgregarAsync(Practica practica, CancellationToken ct);
 
-    /// <summary>
-    /// Persiste el estado de una practica. La validez de la transicion la
-    /// decide la entidad segun RN-05; el repositorio solo escribe el resultado.
-    /// </summary>
-    /// <param name="id">Identificador de la practica.</param>
-    /// <param name="estado">Estado ya validado por el dominio.</param>
+    /// <summary>Registra los cambios efectuados sobre una practica existente.</summary>
+    /// <param name="practica">Practica modificada.</param>
     /// <param name="ct">Token de cancelacion de la solicitud.</param>
-    Task ActualizarEstadoAsync(int id, EstadoPractica estado, CancellationToken ct);
-
-    /// <summary>
-    /// Persiste la reasignacion de instructor y aprendiz, accion que RN-04
-    /// reserva al Administrador.
-    /// </summary>
-    /// <param name="id">Identificador de la practica.</param>
-    /// <param name="instructorId">Nuevo instructor responsable.</param>
-    /// <param name="aprendizId">Nuevo aprendiz titular.</param>
-    /// <param name="ct">Token de cancelacion de la solicitud.</param>
-    Task ReasignarAsync(int id, int instructorId, int aprendizId, CancellationToken ct);
+    /// <remarks>
+    /// El repositorio no invoca dominio (H28). La transicion de estado de RN-05,
+    /// la reasignacion de RN-04 y la coherencia entre modalidad y empresa las
+    /// decide la entidad, y el caso de uso es quien la invoca: es ahi donde vive
+    /// IContextoUsuario, del que sale el indicador de Administrador (ADR-03).
+    ///
+    /// Sustituye a ActualizarEstadoAsync y ReasignarAsync, que hasta la Ronda 1
+    /// llamaban a Practica.CambiarEstado y Practica.Reasignar desde dentro del
+    /// repositorio. Un unico metodo cubre ademas CambiarModalidad, que aquellos
+    /// dos no contemplaban.
+    /// </remarks>
+    Task ActualizarAsync(Practica practica, CancellationToken ct);
 }

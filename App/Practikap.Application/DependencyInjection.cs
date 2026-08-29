@@ -2,6 +2,10 @@ using AutoMapper;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Practikap.Application.UseCases.Autenticacion;
+using Practikap.Application.UseCases.Empresas;
+using Practikap.Application.UseCases.Fichas;
+using Practikap.Application.UseCases.Practicas;
+using Practikap.Application.UseCases.Programas;
 using Practikap.Application.UseCases.Roles;
 using Practikap.Application.UseCases.Usuarios;
 
@@ -51,6 +55,19 @@ public static class DependencyInjection
         services.AddScoped<CambiarRolUseCase>();
         services.AddScoped<CambiarEstadoUsuarioUseCase>();
         services.AddScoped<ListarRolesUseCase>();
+        // Modulo M3 - Practicas.
+        services.AddScoped<CrearPracticaUseCase>();
+        services.AddScoped<ActualizarPracticaUseCase>();
+        services.AddScoped<CambiarEstadoPracticaUseCase>();
+        services.AddScoped<ListarPracticasUseCase>();
+        services.AddScoped<ObtenerPracticaUseCase>();
+        // Modulo M3 - Datos maestros que gestiona el Administrador (FA-26).
+        services.AddScoped<CrearProgramaUseCase>();
+        services.AddScoped<ListarProgramasUseCase>();
+        services.AddScoped<CrearFichaUseCase>();
+        services.AddScoped<ListarFichasUseCase>();
+        services.AddScoped<CrearEmpresaUseCase>();
+        services.AddScoped<ListarEmpresasUseCase>();
 
         return services;
     }
