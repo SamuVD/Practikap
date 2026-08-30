@@ -21,10 +21,10 @@ namespace Practikap.Application.UseCases.Mensajes;
 /// que hace que no exista forma de escribirle a un usuario con el que no se
 /// comparte practica: no hay campo donde nombrarlo.
 ///
-/// La notificacion que RF-07 describe no se genera aqui. El modulo M6 se reparte
-/// entre dos pasos (Doc_Arquitectura 7.1) y las notificaciones son el 4.6; el
-/// punto de enganche queda marcado mas abajo, con la misma forma que los de
-/// RN-06 en M5.
+/// La notificacion que RF-07 describe si se genera aqui desde el paso 4.6, que es
+/// el que cierra el modulo: M6 se reparte entre dos pasos (Doc_Arquitectura 7.1)
+/// y aquel cableo el enganche que el 4.5 habia dejado marcado mas abajo (K7, L5).
+/// Se notifica al receptor, que es el mismo que ya se derivo para el mensaje.
 ///
 /// Solo el Instructor y el Aprendiz envian. El Administrador lee con alcance de
 /// supervision pero no escribe (K4), y queda fuera por la puerta de
@@ -35,6 +35,7 @@ public sealed class EnviarMensajeUseCase
     private readonly IMensajeRepository _mensajeRepo;
     private readonly IPracticaRepository _practicaRepo;
     private readonly IContextoUsuario _contexto;
+    private readonly IGeneradorDeNotificaciones _generador;
     private readonly IUnidadDeTrabajo _unidadDeTrabajo;
     private readonly IValidator<EnviarMensajeRequest> _validador;
     private readonly IMapper _mapeador;
@@ -44,6 +45,7 @@ public sealed class EnviarMensajeUseCase
     /// <param name="mensajeRepo">Acceso a los mensajes.</param>
     /// <param name="practicaRepo">Acceso a practicas, para las puertas de K3 y de participacion.</param>
     /// <param name="contexto">Identidad del solicitante (ADR-03).</param>
+    /// <param name="generador">Emision de la notificacion de RF-07 (K7, L5, L6).</param>
     /// <param name="unidadDeTrabajo">Punto de confirmacion (ADR-02).</param>
     /// <param name="validador">Validador de forma del DTO (RN-15).</param>
     /// <param name="mapeador">Proyeccion a DTO de salida.</param>
@@ -52,6 +54,7 @@ public sealed class EnviarMensajeUseCase
         IMensajeRepository mensajeRepo,
         IPracticaRepository practicaRepo,
         IContextoUsuario contexto,
+        IGeneradorDeNotificaciones generador,
         IUnidadDeTrabajo unidadDeTrabajo,
         IValidator<EnviarMensajeRequest> validador,
         IMapper mapeador,
@@ -60,6 +63,7 @@ public sealed class EnviarMensajeUseCase
         _mensajeRepo = mensajeRepo;
         _practicaRepo = practicaRepo;
         _contexto = contexto;
+        _generador = generador;
         _unidadDeTrabajo = unidadDeTrabajo;
         _validador = validador;
         _mapeador = mapeador;
@@ -113,16 +117,18 @@ public sealed class EnviarMensajeUseCase
 
         await _mensajeRepo.AgregarAsync(mensaje, ct);
 
+        // El enganche que K7 dejo marcado, cableado por L5. CU-06 pide que el
+        // sistema genere una notificacion interna al recibirse un mensaje, con
+        // tipo 'Mensaje'. Va antes de la confirmacion y no despues: el generador
+        // solo registra, de modo que el mensaje y su aviso entran en el mismo
+        // SaveChanges y en la misma transaccion. Si el envio falla, no queda una
+        // notificacion anunciando un mensaje que nadie podria abrir.
+        await _generador.PorMensajeAsync(receptorId, mensaje.PracticaId, ct);
+
         // Hasta aqui mensaje.Id vale 0 y FechaEnvio es el valor por defecto de
         // DateTime. La confirmacion asigna el primero y trae de vuelta la
         // segunda, que es la que escribio MySQL.
         await _unidadDeTrabajo.GuardarCambiosAsync(ct);
-
-        // Punto de enganche de la notificacion de RF-07 (K7). CU-06 pide que el
-        // sistema genere una notificacion interna al recibirse un mensaje, con
-        // tipo 'Mensaje' en la tabla notificaciones. Las notificaciones son el
-        // paso 4.6: aqui no se implementan ni se simulan. Cuando lleguen,
-        // consumiran INotificacionRepository.AgregarAsync sobre este receptorId.
 
         _registro.LogInformation(
             "Mensaje {MensajeId} enviado por el usuario {EmisorId} al usuario {ReceptorId} en la practica {PracticaId}.",

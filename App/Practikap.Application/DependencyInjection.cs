@@ -1,11 +1,13 @@
 using AutoMapper;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using Practikap.Application.Common;
 using Practikap.Application.UseCases.Autenticacion;
 using Practikap.Application.UseCases.Calificaciones;
 using Practikap.Application.UseCases.Empresas;
 using Practikap.Application.UseCases.Fichas;
 using Practikap.Application.UseCases.Mensajes;
+using Practikap.Application.UseCases.Notificaciones;
 using Practikap.Application.UseCases.Observaciones;
 using Practikap.Application.UseCases.Practicas;
 using Practikap.Application.UseCases.Programas;
@@ -36,6 +38,10 @@ public static class DependencyInjection
     ///
     /// Los casos de uso si se enumeran uno por uno, con alcance Scoped, porque
     /// dependen del DbContext (ADR-02). El modulo M1 aporta los once primeros.
+    ///
+    /// La unica pieza que no es ni perfil, ni validador, ni caso de uso es
+    /// IGeneradorDeNotificaciones, que el paso 4.6 registra al final por la misma
+    /// razon de alcance (L6).
     /// </remarks>
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
@@ -85,10 +91,22 @@ public static class DependencyInjection
         services.AddScoped<ListarCalificacionesDePracticaUseCase>();
         services.AddScoped<AnularCalificacionInstructorUseCase>();
         services.AddScoped<AnularCalificacionAprendizUseCase>();
-        // Modulo M6 - Mensajeria. Las notificaciones son el paso 4.6.
+        // Modulo M6 - Mensajeria, paso 4.5.
         services.AddScoped<EnviarMensajeUseCase>();
         services.AddScoped<ListarMensajesDePracticaUseCase>();
         services.AddScoped<MarcarMensajeLeidoUseCase>();
+        // Modulo M6 - Notificaciones, paso 4.6. El modulo se reparte entre dos
+        // pasos (Doc_Arquitectura 7.1) y este lo cierra.
+        services.AddScoped<ListarNotificacionesUseCase>();
+        services.AddScoped<CrearNotificacionAdministrativaUseCase>();
+        services.AddScoped<MarcarNotificacionLeidaUseCase>();
+
+        // Punto unico de emision de notificaciones (L6). No es un caso de uso,
+        // pero se enumera a mano por el mismo motivo que ellos: tiene alcance
+        // Scoped porque su repositorio comparte el DbContext de la peticion
+        // (ADR-02, ADR-05). Es lo que permite que la notificacion de un evento se
+        // confirme en la misma transaccion que el evento.
+        services.AddScoped<IGeneradorDeNotificaciones, GeneradorDeNotificaciones>();
 
         return services;
     }

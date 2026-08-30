@@ -25,6 +25,11 @@ namespace Practikap.Application.UseCases.Observaciones;
 /// historial devolveria una observacion vigente dentro de un seguimiento que ya
 /// no cuenta. La comprobacion va al final para no revelar el estado de un
 /// seguimiento cuya practica el solicitante no puede tocar.
+///
+/// Notifica al aprendiz de la practica (RF-07, L5). El paso 4.6 cableo el
+/// enganche que este archivo tenia marcado desde el 4.3: la llamada va antes de
+/// GuardarCambiosAsync, de modo que la observacion y su aviso se confirman en una
+/// sola transaccion (L6, ADR-02).
 /// </remarks>
 public sealed class RegistrarObservacionUseCase
 {
@@ -32,6 +37,7 @@ public sealed class RegistrarObservacionUseCase
     private readonly ISeguimientoRepository _seguimientoRepo;
     private readonly IPracticaRepository _practicaRepo;
     private readonly IContextoUsuario _contexto;
+    private readonly IGeneradorDeNotificaciones _generador;
     private readonly IUnidadDeTrabajo _unidadDeTrabajo;
     private readonly IValidator<CrearObservacionRequest> _validador;
     private readonly IMapper _mapeador;
@@ -42,6 +48,7 @@ public sealed class RegistrarObservacionUseCase
     /// <param name="seguimientoRepo">Acceso a seguimientos, para el registro padre.</param>
     /// <param name="practicaRepo">Acceso a practicas, para las puertas de I2 e I7.</param>
     /// <param name="contexto">Identidad del solicitante (ADR-03).</param>
+    /// <param name="generador">Emision de la notificacion de RF-07 (L5, L6).</param>
     /// <param name="unidadDeTrabajo">Punto de confirmacion (ADR-02).</param>
     /// <param name="validador">Validador de forma del DTO (RN-15).</param>
     /// <param name="mapeador">Proyeccion a DTO de salida.</param>
@@ -51,6 +58,7 @@ public sealed class RegistrarObservacionUseCase
         ISeguimientoRepository seguimientoRepo,
         IPracticaRepository practicaRepo,
         IContextoUsuario contexto,
+        IGeneradorDeNotificaciones generador,
         IUnidadDeTrabajo unidadDeTrabajo,
         IValidator<CrearObservacionRequest> validador,
         IMapper mapeador,
@@ -60,6 +68,7 @@ public sealed class RegistrarObservacionUseCase
         _seguimientoRepo = seguimientoRepo;
         _practicaRepo = practicaRepo;
         _contexto = contexto;
+        _generador = generador;
         _unidadDeTrabajo = unidadDeTrabajo;
         _validador = validador;
         _mapeador = mapeador;
@@ -88,7 +97,10 @@ public sealed class RegistrarObservacionUseCase
         var seguimiento = await _seguimientoRepo.ObtenerPorIdAsync(seguimientoId, ct)
             ?? throw new NoEncontradoException("Seguimiento", seguimientoId);
 
-        await AccesoALaPractica.VerificarEscrituraAsync(
+        // La practica se captura y ya no se descarta: de ella sale el aprendiz al
+        // que se notifica. No hay consulta nueva, es la misma que la puerta ya
+        // hacia.
+        var practica = await AccesoALaPractica.VerificarEscrituraAsync(
             _practicaRepo, _contexto, seguimiento.PracticaId, ct);
 
         if (seguimiento.Anulado)
@@ -99,6 +111,13 @@ public sealed class RegistrarObservacionUseCase
         var observacion = new Observacion(seguimientoId, request.Contenido);
 
         await _observacionRepo.AgregarAsync(observacion, ct);
+
+        // L5, el enganche que el 4.3 dejo marcado. Va antes de la confirmacion y
+        // no despues: el generador solo registra, de modo que las dos filas —la
+        // observacion y su notificacion— entran en el mismo SaveChanges y en la
+        // misma transaccion. Si el alta falla, no queda un aviso huerfano
+        // anunciando una observacion que no existe.
+        await _generador.PorObservacionAsync(practica.AprendizId, practica.Id, ct);
 
         // Igual que en el alta de seguimiento: hasta confirmar, el Id vale 0 y la
         // fecha no existe todavia. La escribe MySQL (RN-11).

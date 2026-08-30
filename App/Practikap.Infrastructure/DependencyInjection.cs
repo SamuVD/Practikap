@@ -101,9 +101,11 @@ public static class DependencyInjection
         services.AddScoped<ICalificacionInstructorRepository, CalificacionInstructorRepository>();
         services.AddScoped<ICalificacionAprendizRepository, CalificacionAprendizRepository>();
 
-        // Modulo M6, mensajeria. INotificacionRepository llega en el paso 4.6:
-        // el modulo se reparte entre dos pasos (Doc_Arquitectura 7.1).
+        // Modulo M6, que el Doc_Arquitectura 7.1 reparte entre dos pasos: la
+        // mensajeria es el 4.5 y las notificaciones el 4.6. Dos registros y no
+        // uno, porque son dos tablas y dos entregables independientes.
         services.AddScoped<IMensajeRepository, MensajeRepository>();
+        services.AddScoped<INotificacionRepository, NotificacionRepository>();
 
         var opcionesJwt = OpcionesJwt.Leer(configuration);
         services.AddSingleton(opcionesJwt);

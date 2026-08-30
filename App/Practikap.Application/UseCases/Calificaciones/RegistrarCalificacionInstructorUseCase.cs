@@ -29,12 +29,17 @@ namespace Practikap.Application.UseCases.Calificaciones;
 /// entre si: el DTO de entrada no tiene donde declararla, la entidad expone
 /// FechaRegistro con setter privado, y la columna esta mapeada como generada por
 /// la base.
+///
+/// Notifica al aprendiz calificado (RF-07, L5). El paso 4.6 cableo el enganche de
+/// notificacion que este archivo tenia marcado desde el 4.4; el del Motor de
+/// Reglas, que es otro, sigue abierto hasta el 4.7 (L7).
 /// </remarks>
 public sealed class RegistrarCalificacionInstructorUseCase
 {
     private readonly ICalificacionInstructorRepository _calificacionRepo;
     private readonly IPracticaRepository _practicaRepo;
     private readonly IContextoUsuario _contexto;
+    private readonly IGeneradorDeNotificaciones _generador;
     private readonly IUnidadDeTrabajo _unidadDeTrabajo;
     private readonly IValidator<CrearCalificacionRequest> _validador;
     private readonly IMapper _mapeador;
@@ -44,6 +49,7 @@ public sealed class RegistrarCalificacionInstructorUseCase
     /// <param name="calificacionRepo">Acceso a las calificaciones del instructor.</param>
     /// <param name="practicaRepo">Acceso a practicas, para las puertas de J4 y de autoria.</param>
     /// <param name="contexto">Identidad del solicitante (ADR-03).</param>
+    /// <param name="generador">Emision de la notificacion de RF-07 (L5, L6).</param>
     /// <param name="unidadDeTrabajo">Punto de confirmacion (ADR-02).</param>
     /// <param name="validador">Validador de forma del DTO (RN-15).</param>
     /// <param name="mapeador">Proyeccion a DTO de salida.</param>
@@ -52,6 +58,7 @@ public sealed class RegistrarCalificacionInstructorUseCase
         ICalificacionInstructorRepository calificacionRepo,
         IPracticaRepository practicaRepo,
         IContextoUsuario contexto,
+        IGeneradorDeNotificaciones generador,
         IUnidadDeTrabajo unidadDeTrabajo,
         IValidator<CrearCalificacionRequest> validador,
         IMapper mapeador,
@@ -60,6 +67,7 @@ public sealed class RegistrarCalificacionInstructorUseCase
         _calificacionRepo = calificacionRepo;
         _practicaRepo = practicaRepo;
         _contexto = contexto;
+        _generador = generador;
         _unidadDeTrabajo = unidadDeTrabajo;
         _validador = validador;
         _mapeador = mapeador;
@@ -85,7 +93,10 @@ public sealed class RegistrarCalificacionInstructorUseCase
     {
         await _validador.ValidateAndThrowAsync(request, ct);
 
-        await AccesoALaPractica.VerificarEscrituraAsync(
+        // La practica se captura y ya no se descarta: de ella sale el aprendiz al
+        // que se notifica. No hay consulta nueva, es la misma que la puerta ya
+        // hacia.
+        var practica = await AccesoALaPractica.VerificarEscrituraAsync(
             _practicaRepo, _contexto, request.PracticaId, ct);
 
         var calificacion = new CalificacionInstructor(
@@ -93,16 +104,24 @@ public sealed class RegistrarCalificacionInstructorUseCase
 
         await _calificacionRepo.AgregarAsync(calificacion, ct);
 
+        // L5, el enganche que el 4.4 dejo marcado. Va antes de la confirmacion:
+        // el generador solo registra, de modo que la calificacion y su
+        // notificacion entran en el mismo SaveChanges y en la misma transaccion.
+        await _generador.PorCalificacionAsync(practica.AprendizId, practica.Id, ct);
+
         // Hasta aqui calificacion.Id vale 0 y FechaRegistro es el valor por
         // defecto de DateTime. La confirmacion asigna el primero y trae de vuelta
         // la segunda, que es la que escribio MySQL.
         await _unidadDeTrabajo.GuardarCambiosAsync(ct);
 
-        // Punto de enganche del Motor de Reglas (RN-06). CU-05 pide que el Motor
-        // evalue el estado de la practica despues de cada calificacion y, si el
-        // promedio cae bajo el umbral, la marque En riesgo y notifique (RN-09).
-        // El Motor llega en el paso 4.7: aqui no se implementa ni se simula.
-        // Cuando llegue, consumira PromedioVigenteAsync de este mismo repositorio.
+        // Punto de enganche del Motor de Reglas (RN-06), que sigue abierto y es
+        // distinto del anterior. CU-05 pide que el Motor evalue el estado de la
+        // practica despues de cada calificacion y, si el promedio cae bajo el
+        // umbral, la marque En riesgo y emita su propia notificacion, de tipo
+        // Riesgo y con regla_id poblado (RN-09). Ese tipo no se emite en este
+        // paso: L7 lo deja para el 4.7, cuando el Motor consuma
+        // PromedioVigenteAsync de este mismo repositorio y la fabrica
+        // Notificacion.DesdeRegla.
 
         _registro.LogInformation(
             "Calificacion {CalificacionId} del instructor {InstructorId} registrada sobre la practica {PracticaId}.",

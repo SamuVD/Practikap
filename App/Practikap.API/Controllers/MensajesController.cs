@@ -26,8 +26,9 @@ namespace Practikap.API.Controllers;
 /// (ADR-03, K5). El GET tampoco la lleva: los tres alcances de RN-13 los resuelve
 /// el caso de uso.
 ///
-/// La notificacion que RF-07 describe no nace en este controlador. Las
-/// notificaciones son el paso 4.6 (K7).
+/// La notificacion que RF-07 describe no nace en este controlador, pero si en el
+/// caso de uso del envio desde el paso 4.6, que cableo el enganche de K7 (L5).
+/// Su lectura y su marca viven en NotificacionesController.
 /// </remarks>
 [ApiController]
 [Route("api/mensajes")]

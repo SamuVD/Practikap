@@ -5,8 +5,22 @@ namespace Practikap.Domain.Interfaces;
 /// <summary>
 /// Contrato de acceso a <see cref="Notificacion"/>. Modulo M6.
 /// </summary>
+/// <remarks>
+/// El paso 3.1 declaraba un MarcarLeidaAsync que recibia el identificador y
+/// habria obligado al repositorio a cargar la notificacion y llamarle
+/// MarcarLeida, es decir a invocar dominio. Se reemplazo por ObtenerPorIdAsync y
+/// ActualizarAsync, y la marca la aplica el caso de uso (L8). Extiende a M6 el
+/// criterio de H28, I9, J7 y de la decision equivalente de la serie K sobre
+/// IMensajeRepository.
+/// </remarks>
 public interface INotificacionRepository
 {
+    /// <summary>Obtiene una notificacion por su identificador.</summary>
+    /// <param name="id">Identificador de la notificacion.</param>
+    /// <param name="ct">Token de cancelacion de la solicitud.</param>
+    /// <returns>La notificacion, o null si no existe.</returns>
+    Task<Notificacion?> ObtenerPorIdAsync(int id, CancellationToken ct);
+
     /// <summary>Lista las notificaciones de un usuario.</summary>
     /// <param name="usuarioId">Usuario destinatario.</param>
     /// <param name="soloNoLeidas">true para devolver unicamente las pendientes de lectura.</param>
@@ -23,8 +37,8 @@ public interface INotificacionRepository
     /// <returns>Identificador asignado a la notificacion.</returns>
     Task<int> AgregarAsync(Notificacion notificacion, CancellationToken ct);
 
-    /// <summary>Marca una notificacion como leida.</summary>
-    /// <param name="id">Identificador de la notificacion.</param>
+    /// <summary>Registra el cambio de una notificacion ya existente.</summary>
+    /// <param name="notificacion">Notificacion con su estado modificado.</param>
     /// <param name="ct">Token de cancelacion de la solicitud.</param>
-    Task MarcarLeidaAsync(int id, CancellationToken ct);
+    Task ActualizarAsync(Notificacion notificacion, CancellationToken ct);
 }
