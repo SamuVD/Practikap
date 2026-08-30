@@ -11,6 +11,7 @@ using Practikap.Application.UseCases.Notificaciones;
 using Practikap.Application.UseCases.Observaciones;
 using Practikap.Application.UseCases.Practicas;
 using Practikap.Application.UseCases.Programas;
+using Practikap.Application.UseCases.Reglas;
 using Practikap.Application.UseCases.Roles;
 using Practikap.Application.UseCases.Seguimientos;
 using Practikap.Application.UseCases.Usuarios;
@@ -100,6 +101,14 @@ public static class DependencyInjection
         services.AddScoped<ListarNotificacionesUseCase>();
         services.AddScoped<CrearNotificacionAdministrativaUseCase>();
         services.AddScoped<MarcarNotificacionLeidaUseCase>();
+        // Modulo M2 - Motor de Reglas, paso 4.7. El evaluador no aparece aqui: es
+        // estatico, sin estado y vive en el Dominio (ADR-04). Lo unico que necesita
+        // alcance Scoped es lo que carga y persiste las reglas.
+        services.AddScoped<CrearReglaUseCase>();
+        services.AddScoped<ListarReglasUseCase>();
+        services.AddScoped<ObtenerReglaUseCase>();
+        services.AddScoped<ActualizarReglaUseCase>();
+        services.AddScoped<CambiarActivaReglaUseCase>();
 
         // Punto unico de emision de notificaciones (L6). No es un caso de uso,
         // pero se enumera a mano por el mismo motivo que ellos: tiene alcance

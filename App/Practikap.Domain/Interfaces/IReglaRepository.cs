@@ -5,6 +5,14 @@ namespace Practikap.Domain.Interfaces;
 /// <summary>
 /// Contrato de acceso a <see cref="Regla"/>. Modulo M2, Motor de Reglas.
 /// </summary>
+/// <remarks>
+/// El paso 3.1 declaraba un CambiarEstadoAsync que recibia el identificador y
+/// habria obligado al repositorio a cargar la regla y llamarle Activar o
+/// Desactivar, es decir a invocar dominio. Se elimino en favor de
+/// ObtenerPorIdAsync y ActualizarAsync, que el contrato ya traia, y la activacion
+/// la aplica el caso de uso (N8). Extiende a M2 el criterio de H28, I9, J7 y de
+/// las decisiones equivalentes de las series K y L.
+/// </remarks>
 public interface IReglaRepository
 {
     /// <summary>
@@ -33,17 +41,12 @@ public interface IReglaRepository
     /// <returns>Identificador asignado a la regla.</returns>
     Task<int> AgregarAsync(Regla regla, CancellationToken ct);
 
-    /// <summary>Registra los cambios efectuados sobre una regla existente.</summary>
+    /// <summary>
+    /// Registra los cambios efectuados sobre una regla existente, incluido el de
+    /// su activacion. Materializa RN-08: una regla entra o sale de operacion sin
+    /// modificar codigo ni desplegar de nuevo.
+    /// </summary>
     /// <param name="regla">Regla modificada.</param>
     /// <param name="ct">Token de cancelacion de la solicitud.</param>
     Task ActualizarAsync(Regla regla, CancellationToken ct);
-
-    /// <summary>
-    /// Activa o desactiva una regla. Materializa RN-08: una regla entra o sale
-    /// de operacion sin modificar codigo ni desplegar de nuevo.
-    /// </summary>
-    /// <param name="id">Identificador de la regla.</param>
-    /// <param name="activa">true para activarla; false para retirarla.</param>
-    /// <param name="ct">Token de cancelacion de la solicitud.</param>
-    Task CambiarEstadoAsync(int id, bool activa, CancellationToken ct);
 }

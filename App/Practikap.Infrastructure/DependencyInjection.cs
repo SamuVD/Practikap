@@ -107,6 +107,12 @@ public static class DependencyInjection
         services.AddScoped<IMensajeRepository, MensajeRepository>();
         services.AddScoped<INotificacionRepository, NotificacionRepository>();
 
+        // Modulo M2, Motor de Reglas, paso 4.7. Un solo registro: el evaluador
+        // vive en el Dominio (Practikap.Domain.Rules.MotorDeReglas), es estatico y
+        // sin estado, y no se inyecta. Lo unico que necesita el contenedor es de
+        // donde salen las reglas (ADR-04).
+        services.AddScoped<IReglaRepository, ReglaRepository>();
+
         var opcionesJwt = OpcionesJwt.Leer(configuration);
         services.AddSingleton(opcionesJwt);
 
