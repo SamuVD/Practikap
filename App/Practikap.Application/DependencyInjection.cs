@@ -5,6 +5,7 @@ using Practikap.Application.UseCases.Autenticacion;
 using Practikap.Application.UseCases.Calificaciones;
 using Practikap.Application.UseCases.Empresas;
 using Practikap.Application.UseCases.Fichas;
+using Practikap.Application.UseCases.Mensajes;
 using Practikap.Application.UseCases.Observaciones;
 using Practikap.Application.UseCases.Practicas;
 using Practikap.Application.UseCases.Programas;
@@ -84,6 +85,10 @@ public static class DependencyInjection
         services.AddScoped<ListarCalificacionesDePracticaUseCase>();
         services.AddScoped<AnularCalificacionInstructorUseCase>();
         services.AddScoped<AnularCalificacionAprendizUseCase>();
+        // Modulo M6 - Mensajeria. Las notificaciones son el paso 4.6.
+        services.AddScoped<EnviarMensajeUseCase>();
+        services.AddScoped<ListarMensajesDePracticaUseCase>();
+        services.AddScoped<MarcarMensajeLeidoUseCase>();
 
         return services;
     }
