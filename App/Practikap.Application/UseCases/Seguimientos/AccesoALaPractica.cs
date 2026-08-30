@@ -7,11 +7,12 @@ using Practikap.Domain.Interfaces;
 namespace Practikap.Application.UseCases.Seguimientos;
 
 /// <summary>
-/// Las dos preguntas que M4 y M5 le hacen a una practica antes de tocarla: si el
-/// solicitante puede escribir sobre ella (I2, I7, J4) y si puede verla (RN-13).
+/// Las dos preguntas que M4, M5 y M6 le hacen a una practica antes de tocarla: si
+/// el solicitante puede escribir sobre ella (I2, I7, J4, K3) y si puede verla
+/// (RN-13).
 /// </summary>
 /// <remarks>
-/// Es la pieza compartida de los dos modulos, con la misma forma que
+/// Es la pieza compartida de los tres modulos, con la misma forma que
 /// ParticipantesDePractica tiene en M3: clase estatica, sin estado ni
 /// dependencias propias, que no entra en el contenedor y no contradice ADR-05.
 ///
@@ -112,6 +113,58 @@ internal static class AccesoALaPractica
     }
 
     /// <summary>
+    /// La misma comprobacion que las dos anteriores, pero admitiendo a cualquiera
+    /// de los dos participantes. Es la puerta del POST con el que el Instructor o
+    /// el Aprendiz envian un mensaje dentro de una practica (K2, K3).
+    /// </summary>
+    /// <param name="practicaRepo">Acceso a practicas, del modulo M3.</param>
+    /// <param name="contexto">Identidad del solicitante (ADR-03).</param>
+    /// <param name="practicaId">Practica sobre la que se pretende escribir.</param>
+    /// <param name="ct">Token de cancelacion de la solicitud.</param>
+    /// <returns>La practica, si las tres condiciones se cumplen.</returns>
+    /// <exception cref="AutorizacionException">
+    /// Si el solicitante no es ni el instructor ni el aprendiz de la practica
+    /// (403). Es la puerta por la que queda fuera el Administrador, que lee pero
+    /// no envia (K4).
+    /// </exception>
+    /// <exception cref="ReglaDeDominioException">
+    /// Si la practica no existe, o si no esta En curso ni En riesgo (422, K3).
+    /// </exception>
+    /// <remarks>
+    /// Tercer metodo y no un parametro de los anteriores, con el mismo criterio
+    /// con el que J agrego el del aprendiz: las firmas que M4 y M5 ya invocan no
+    /// se tocan. Lo unico que los tres comparten es la guarda de estado.
+    ///
+    /// A diferencia de las otras dos, esta no distingue que rol ocupa el
+    /// solicitante en la practica. M6 no lo necesita: la mensajeria es simetrica
+    /// y quien envia es indistintamente uno u otro. De ahi que el caso de uso
+    /// derive el receptor a partir de la practica que este metodo devuelve.
+    /// </remarks>
+    public static async Task<Practica> VerificarEscrituraDeParticipanteAsync(
+        IPracticaRepository practicaRepo,
+        IContextoUsuario contexto,
+        int practicaId,
+        CancellationToken ct)
+    {
+        // 422 y no 404, por el mismo motivo que en las dos anteriores: el
+        // identificador viaja en el cuerpo del POST y no en la ruta.
+        var practica = await practicaRepo.ObtenerPorIdAsync(practicaId, ct)
+            ?? throw new ReglaDeDominioException(
+                $"La practica {practicaId} no existe.", "RN-13");
+
+        if (practica.InstructorId != contexto.UsuarioId
+            && practica.AprendizId != contexto.UsuarioId)
+            throw new AutorizacionException(
+                "Solo puede enviar mensajes en las practicas en las que usted participa.");
+
+        // Imputado a RN-13, que es la regla sobre la que M6 se apoya, igual que
+        // M4 lo imputa a RN-12 y M5 a RN-10.
+        VerificarEstadoAdmiteRegistro(practica, "RN-13");
+
+        return practica;
+    }
+
+    /// <summary>
     /// Comprueba que el estado de la practica admita registros nuevos: solo
     /// En curso y En riesgo.
     /// </summary>
@@ -119,14 +172,16 @@ internal static class AccesoALaPractica
     /// <param name="regla">
     /// Regla a la que se atribuye el 422. M4 lo imputa a RN-12, que es la que
     /// gobierna el historial de seguimiento; M5 a RN-10, que es la de la
-    /// calificacion bidireccional.
+    /// calificacion bidireccional; M6 a RN-13, que es la del aislamiento sobre el
+    /// que se apoya la mensajeria.
     /// </param>
     /// <exception cref="ReglaDeDominioException">Si el estado no lo admite (422).</exception>
     /// <remarks>
-    /// I2 y J4 dicen lo mismo con distinto nombre, y por eso comparten guarda.
+    /// I2, J4 y K3 dicen lo mismo con distinto nombre, y por eso comparten guarda.
     /// En riesgo entra junto a En curso: es un estado de alerta del Motor
-    /// (RN-09), no una practica detenida, y es justo cuando el seguimiento y la
-    /// calificacion mas importan. Pendiente y Finalizada quedan fuera.
+    /// (RN-09), no una practica detenida, y es justo cuando el seguimiento, la
+    /// calificacion y la comunicacion mas importan. Pendiente y Finalizada quedan
+    /// fuera.
     /// </remarks>
     private static void VerificarEstadoAdmiteRegistro(Practica practica, string regla)
     {

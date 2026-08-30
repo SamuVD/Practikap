@@ -5,8 +5,22 @@ namespace Practikap.Domain.Interfaces;
 /// <summary>
 /// Contrato de acceso a <see cref="Mensaje"/>. Modulo M6.
 /// </summary>
+/// <remarks>
+/// El contrato original declaraba MarcarLeidoAsync(int id, ct), que recibia el
+/// identificador y obligaba al repositorio a cargar el mensaje y aplicarle
+/// Mensaje.MarcarLeido. Eso es lo que H28 prohibio en M3, I9 extendio a M4 y J7
+/// a M5: el repositorio no invoca dominio. Se reemplaza por el par que usan los
+/// otros cinco repositorios, ObtenerPorIdAsync y ActualizarAsync, y la marca
+/// pasa a aplicarla el caso de uso sobre la entidad rastreada.
+/// </remarks>
 public interface IMensajeRepository
 {
+    /// <summary>Obtiene un mensaje por su identificador.</summary>
+    /// <param name="id">Identificador del mensaje.</param>
+    /// <param name="ct">Token de cancelacion de la solicitud.</param>
+    /// <returns>El mensaje, o null si no existe.</returns>
+    Task<Mensaje?> ObtenerPorIdAsync(int id, CancellationToken ct);
+
     /// <summary>Lista los mensajes intercambiados en una practica.</summary>
     /// <param name="practicaId">Practica que enmarca la conversacion.</param>
     /// <param name="ct">Token de cancelacion de la solicitud.</param>
@@ -19,10 +33,10 @@ public interface IMensajeRepository
     /// <returns>Identificador asignado al mensaje.</returns>
     Task<int> AgregarAsync(Mensaje mensaje, CancellationToken ct);
 
-    /// <summary>Marca un mensaje como leido por su destinatario.</summary>
-    /// <param name="id">Identificador del mensaje.</param>
+    /// <summary>Registra el cambio de estado de un mensaje ya existente.</summary>
+    /// <param name="mensaje">Mensaje con la marca de lectura ya aplicada.</param>
     /// <param name="ct">Token de cancelacion de la solicitud.</param>
-    Task MarcarLeidoAsync(int id, CancellationToken ct);
+    Task ActualizarAsync(Mensaje mensaje, CancellationToken ct);
 
     /// <summary>
     /// Indica si dos usuarios comparten al menos una practica sin finalizar.
