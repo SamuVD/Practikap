@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Practikap.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using Practikap.Infrastructure.Persistence;
 namespace Practikap.Infrastructure.Migrations
 {
     [DbContext(typeof(PractikapDbContext))]
-    partial class PractikapDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260829123644_MonitoriaSinEmpresa")]
+    partial class MonitoriaSinEmpresa
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

@@ -14,6 +14,15 @@ public interface IProgramaRepository
     /// <returns>El programa, o null si no existe.</returns>
     Task<Programa?> ObtenerPorIdAsync(int id, CancellationToken ct);
 
+    /// <summary>
+    /// Indica si el nombre ya esta registrado. El caso de uso traduce un
+    /// resultado positivo a HTTP 409.
+    /// </summary>
+    /// <param name="nombre">Nombre a verificar.</param>
+    /// <param name="ct">Token de cancelacion de la solicitud.</param>
+    /// <returns>true si el nombre ya existe; false en caso contrario.</returns>
+    Task<bool> ExisteNombreAsync(string nombre, CancellationToken ct);
+
     /// <summary>Lista los programas de formacion.</summary>
     /// <param name="ct">Token de cancelacion de la solicitud.</param>
     /// <returns>Coleccion de solo lectura con los programas.</returns>

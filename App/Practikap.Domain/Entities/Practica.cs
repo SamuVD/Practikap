@@ -34,7 +34,7 @@ public class Practica
     /// <param name="aprendizId">Unico aprendiz titular (RN-04).</param>
     /// <param name="modalidad">Modalidad bajo la que se desarrolla la practica.</param>
     /// <param name="fechaInicio">Fecha de inicio de la practica.</param>
-    /// <param name="empresaId">Empresa receptora. Obligatoria salvo en Proyecto productivo.</param>
+    /// <param name="empresaId">Empresa receptora. Obligatoria salvo en Proyecto productivo y Monitoria.</param>
     /// <param name="fechaFin">Fecha de cierre prevista. Opcional.</param>
     /// <exception cref="ReglaDeDominioException">
     /// Si falta un participante, si instructor y aprendiz coinciden, si la
@@ -73,7 +73,7 @@ public class Practica
     /// <summary>Ficha de formacion. Columna practicas.ficha_id.</summary>
     public int FichaId { get; private set; }
 
-    /// <summary>Empresa receptora, nula en Proyecto productivo. Columna practicas.empresa_id.</summary>
+    /// <summary>Empresa receptora, nula en Proyecto productivo y Monitoria. Columna practicas.empresa_id.</summary>
     public int? EmpresaId { get; private set; }
 
     /// <summary>Instructor responsable. Columna practicas.instructor_id.</summary>
@@ -102,6 +102,12 @@ public class Practica
 
     /// <summary>Empresa receptora, cuando la modalidad la exige.</summary>
     public Empresa? Empresa { get; private set; }
+
+    /// <summary>Instructor responsable de la practica.</summary>
+    public Usuario Instructor { get; private set; } = null!;
+
+    /// <summary>Aprendiz titular de la practica.</summary>
+    public Usuario Aprendiz { get; private set; } = null!;
 
     /// <summary>Historial de seguimientos de la practica.</summary>
     public IReadOnlyCollection<Seguimiento> Seguimientos => _seguimientos;
@@ -185,7 +191,7 @@ public class Practica
 
     /// <summary>Cambia la modalidad y, con ella, la empresa receptora.</summary>
     /// <param name="modalidad">Nueva modalidad.</param>
-    /// <param name="empresaId">Empresa receptora. Debe ser nula solo en Proyecto productivo.</param>
+    /// <param name="empresaId">Empresa receptora. Debe ser nula en Proyecto productivo y en Monitoria.</param>
     /// <exception cref="ReglaDeDominioException">Si la combinacion es incoherente.</exception>
     public void CambiarModalidad(ModalidadPractica modalidad, int? empresaId)
     {
@@ -196,15 +202,24 @@ public class Practica
 
     /// <summary>
     /// Replica en el dominio la restriccion chk_practicas_empresa_modalidad del
-    /// Script_DDL.sql: solo Proyecto productivo admite practica sin empresa.
+    /// Script_DDL.sql: Proyecto productivo y Monitoria se desarrollan sin empresa
+    /// receptora; las demas modalidades la exigen.
     /// </summary>
+    /// <remarks>
+    /// La monitoria transcurre dentro del propio centro de formacion, de modo que
+    /// no solo no exige empresa: no admite ninguna. El criterio es una particion
+    /// entre dos grupos de modalidades, igual que la restriccion de la base.
+    /// </remarks>
     private static void ValidarModalidadYEmpresa(ModalidadPractica modalidad, int? empresaId)
     {
-        if (modalidad == ModalidadPractica.ProyectoProductivo && empresaId is not null)
-            throw new ReglaDeDominioException(
-                "La modalidad Proyecto productivo no admite empresa asociada.");
+        var admiteEmpresa = modalidad is not (ModalidadPractica.ProyectoProductivo
+                                           or ModalidadPractica.Monitoria);
 
-        if (modalidad != ModalidadPractica.ProyectoProductivo && empresaId is null)
+        if (!admiteEmpresa && empresaId is not null)
+            throw new ReglaDeDominioException(
+                "Las modalidades Proyecto productivo y Monitoria no admiten empresa asociada.");
+
+        if (admiteEmpresa && empresaId is null)
             throw new ReglaDeDominioException(
                 "Esta modalidad requiere una empresa receptora asociada.");
     }

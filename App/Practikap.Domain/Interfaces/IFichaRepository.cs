@@ -24,4 +24,15 @@ public interface IFichaRepository
     /// <param name="ct">Token de cancelacion de la solicitud.</param>
     /// <returns>Coleccion de solo lectura con las fichas del programa.</returns>
     Task<IReadOnlyList<Ficha>> ListarPorProgramaAsync(int programaId, CancellationToken ct);
+
+    /// <summary>Lista todas las fichas registradas.</summary>
+    /// <param name="ct">Token de cancelacion de la solicitud.</param>
+    /// <returns>Coleccion de solo lectura con las fichas.</returns>
+    Task<IReadOnlyList<Ficha>> ListarAsync(CancellationToken ct);
+
+    /// <summary>Registra una ficha nueva.</summary>
+    /// <param name="ficha">Ficha a persistir.</param>
+    /// <param name="ct">Token de cancelacion de la solicitud.</param>
+    /// <returns>Identificador asignado a la ficha.</returns>
+    Task<int> AgregarAsync(Ficha ficha, CancellationToken ct);
 }
