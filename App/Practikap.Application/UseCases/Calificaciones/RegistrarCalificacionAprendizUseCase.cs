@@ -26,12 +26,18 @@ namespace Practikap.Application.UseCases.Calificaciones;
 ///
 /// Como en la direccion contraria, la fecha la fija el servidor (RN-11) y se
 /// admiten varias evaluaciones por practica (J5).
+///
+/// Notifica al instructor evaluado (RF-07, L5). Es la unica diferencia del
+/// enganche respecto de la direccion contraria: mismo metodo del generador y
+/// mismo texto, otro destinatario. El del Motor de Reglas, que es otro enganche,
+/// sigue abierto hasta el 4.7 (L7).
 /// </remarks>
 public sealed class RegistrarCalificacionAprendizUseCase
 {
     private readonly ICalificacionAprendizRepository _calificacionRepo;
     private readonly IPracticaRepository _practicaRepo;
     private readonly IContextoUsuario _contexto;
+    private readonly IGeneradorDeNotificaciones _generador;
     private readonly IUnidadDeTrabajo _unidadDeTrabajo;
     private readonly IValidator<CrearCalificacionRequest> _validador;
     private readonly IMapper _mapeador;
@@ -41,6 +47,7 @@ public sealed class RegistrarCalificacionAprendizUseCase
     /// <param name="calificacionRepo">Acceso a las evaluaciones del aprendiz.</param>
     /// <param name="practicaRepo">Acceso a practicas, para las puertas de J4 y de autoria.</param>
     /// <param name="contexto">Identidad del solicitante (ADR-03).</param>
+    /// <param name="generador">Emision de la notificacion de RF-07 (L5, L6).</param>
     /// <param name="unidadDeTrabajo">Punto de confirmacion (ADR-02).</param>
     /// <param name="validador">Validador de forma del DTO (RN-15).</param>
     /// <param name="mapeador">Proyeccion a DTO de salida.</param>
@@ -49,6 +56,7 @@ public sealed class RegistrarCalificacionAprendizUseCase
         ICalificacionAprendizRepository calificacionRepo,
         IPracticaRepository practicaRepo,
         IContextoUsuario contexto,
+        IGeneradorDeNotificaciones generador,
         IUnidadDeTrabajo unidadDeTrabajo,
         IValidator<CrearCalificacionRequest> validador,
         IMapper mapeador,
@@ -57,6 +65,7 @@ public sealed class RegistrarCalificacionAprendizUseCase
         _calificacionRepo = calificacionRepo;
         _practicaRepo = practicaRepo;
         _contexto = contexto;
+        _generador = generador;
         _unidadDeTrabajo = unidadDeTrabajo;
         _validador = validador;
         _mapeador = mapeador;
@@ -82,7 +91,10 @@ public sealed class RegistrarCalificacionAprendizUseCase
     {
         await _validador.ValidateAndThrowAsync(request, ct);
 
-        await AccesoALaPractica.VerificarEscrituraDelAprendizAsync(
+        // La practica se captura y ya no se descarta: de ella sale el instructor
+        // al que se notifica. No hay consulta nueva, es la misma que la puerta ya
+        // hacia.
+        var practica = await AccesoALaPractica.VerificarEscrituraDelAprendizAsync(
             _practicaRepo, _contexto, request.PracticaId, ct);
 
         var calificacion = new CalificacionAprendiz(
@@ -90,11 +102,18 @@ public sealed class RegistrarCalificacionAprendizUseCase
 
         await _calificacionRepo.AgregarAsync(calificacion, ct);
 
+        // L5, igual que en la direccion contraria y con el mismo metodo del
+        // generador: cambia el destinatario, que aqui es el instructor. Va antes
+        // de la confirmacion, de modo que las dos filas caen en la misma
+        // transaccion.
+        await _generador.PorCalificacionAsync(practica.InstructorId, practica.Id, ct);
+
         await _unidadDeTrabajo.GuardarCambiosAsync(ct);
 
         // Punto de enganche del Motor de Reglas (RN-06), igual que en la
-        // direccion contraria. El Motor llega en el paso 4.7: aqui no se
-        // implementa ni se simula.
+        // direccion contraria y distinto del anterior. El Motor llega en el paso
+        // 4.7, y con el la notificacion de tipo Riesgo, que L7 deja fuera de este
+        // paso: aqui no se implementa ni se simula.
 
         _registro.LogInformation(
             "Evaluacion {CalificacionId} del aprendiz {AprendizId} registrada sobre la practica {PracticaId}.",

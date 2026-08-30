@@ -131,6 +131,7 @@ public static class ConvertidoresDeEnum
         TipoNotificacion.Mensaje => "Mensaje",
         TipoNotificacion.Observacion => "Observacion",
         TipoNotificacion.Riesgo => "Riesgo",
+        TipoNotificacion.Administrativa => "Administrativa",
         _ => throw Desconocido(nameof(TipoNotificacion), v)
     };
 
@@ -218,6 +219,7 @@ public static class ConvertidoresDeEnum
         "Mensaje" => TipoNotificacion.Mensaje,
         "Observacion" => TipoNotificacion.Observacion,
         "Riesgo" => TipoNotificacion.Riesgo,
+        "Administrativa" => TipoNotificacion.Administrativa,
         _ => throw Ilegible(nameof(TipoNotificacion), v)
     };
 

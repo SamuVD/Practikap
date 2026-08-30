@@ -34,7 +34,7 @@ public class NotificacionConfiguration : IEntityTypeConfiguration<Notificacion>
         builder.Property(n => n.Tipo)
                .HasColumnName("tipo")
                .HasConversion(ConvertidoresDeEnum.ConvertidorTipoNotificacion)
-               .HasColumnType("enum('Calificacion','Mensaje','Observacion','Riesgo')")
+               .HasColumnType("enum('Calificacion','Mensaje','Observacion','Riesgo','Administrativa')")
                .IsRequired();
 
         builder.Property(n => n.Contenido)
