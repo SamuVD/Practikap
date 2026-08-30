@@ -91,6 +91,11 @@ public static class DependencyInjection
         services.AddScoped<IEmpresaRepository, EmpresaRepository>();
         services.AddScoped<IProgramaRepository, ProgramaRepository>();
 
+        // Modulo M4. Los dos contratos son de escritura acotada: registran y
+        // marcan como anulado, nunca editan ni eliminan (RN-12).
+        services.AddScoped<ISeguimientoRepository, SeguimientoRepository>();
+        services.AddScoped<IObservacionRepository, ObservacionRepository>();
+
         var opcionesJwt = OpcionesJwt.Leer(configuration);
         services.AddSingleton(opcionesJwt);
 

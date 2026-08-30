@@ -6,10 +6,17 @@ namespace Practikap.Domain.Interfaces;
 /// Contrato de acceso a <see cref="Seguimiento"/>. Modulo M4.
 /// </summary>
 /// <remarks>
-/// El contrato no ofrece metodo de actualizacion ni de eliminacion: el
-/// historial es inmutable por RN-12 y la unica alteracion admitida es la marca
-/// de anulacion. La ausencia de esos metodos es la evidencia verificable de
-/// que la regla se cumple a nivel arquitectonico.
+/// El contrato no ofrece metodo de eliminacion ni ninguno que reciba el
+/// contenido de un registro ya existente: el historial es inmutable por RN-12 y
+/// la unica alteracion admitida es la marca de anulacion, que solo el Dominio
+/// sabe aplicar. La ausencia de esos metodos es la evidencia verificable de que
+/// la regla se cumple a nivel arquitectonico.
+///
+/// ActualizarAsync no contradice lo anterior: no lleva datos, solo registra una
+/// entidad que llego desatada. Quien decide que cambia es Seguimiento.Anular,
+/// invocado desde el caso de uso. I9 lo puso en lugar de
+/// AnularAsync(id, anuladoPorId, ct), que obligaba al repositorio a cargar la
+/// entidad e invocar dominio, que es justo lo que H28 descarto en M3.
 /// </remarks>
 public interface ISeguimientoRepository
 {
@@ -35,13 +42,12 @@ public interface ISeguimientoRepository
     Task<int> AgregarAsync(Seguimiento seguimiento, CancellationToken ct);
 
     /// <summary>
-    /// Marca un seguimiento como anulado. Unica alteracion del historial que
-    /// RN-12 permite, y solo al Administrador.
+    /// Registra un seguimiento que llega desatado. Es la via por la que se
+    /// persiste la marca de anulacion, unica alteracion que RN-12 permite.
     /// </summary>
-    /// <param name="id">Identificador del seguimiento.</param>
-    /// <param name="anuladoPorId">Administrador que ejecuta la anulacion.</param>
+    /// <param name="seguimiento">Seguimiento ya modificado por el Dominio.</param>
     /// <param name="ct">Token de cancelacion de la solicitud.</param>
-    Task AnularAsync(int id, int anuladoPorId, CancellationToken ct);
+    Task ActualizarAsync(Seguimiento seguimiento, CancellationToken ct);
 
     /// <summary>
     /// Devuelve la fecha del ultimo seguimiento registrado en una practica.
