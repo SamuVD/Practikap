@@ -96,6 +96,11 @@ public static class DependencyInjection
         services.AddScoped<ISeguimientoRepository, SeguimientoRepository>();
         services.AddScoped<IObservacionRepository, ObservacionRepository>();
 
+        // Modulo M5. Dos registros y no uno con discriminador, porque son dos
+        // tablas separadas y dos caminos que no se consultan entre si (RN-10).
+        services.AddScoped<ICalificacionInstructorRepository, CalificacionInstructorRepository>();
+        services.AddScoped<ICalificacionAprendizRepository, CalificacionAprendizRepository>();
+
         var opcionesJwt = OpcionesJwt.Leer(configuration);
         services.AddSingleton(opcionesJwt);
 
