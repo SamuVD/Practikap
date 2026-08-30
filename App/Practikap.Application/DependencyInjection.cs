@@ -4,9 +4,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Practikap.Application.UseCases.Autenticacion;
 using Practikap.Application.UseCases.Empresas;
 using Practikap.Application.UseCases.Fichas;
+using Practikap.Application.UseCases.Observaciones;
 using Practikap.Application.UseCases.Practicas;
 using Practikap.Application.UseCases.Programas;
 using Practikap.Application.UseCases.Roles;
+using Practikap.Application.UseCases.Seguimientos;
 using Practikap.Application.UseCases.Usuarios;
 
 namespace Practikap.Application;
@@ -68,6 +70,13 @@ public static class DependencyInjection
         services.AddScoped<ListarFichasUseCase>();
         services.AddScoped<CrearEmpresaUseCase>();
         services.AddScoped<ListarEmpresasUseCase>();
+        // Modulo M4 - Seguimiento y observaciones.
+        services.AddScoped<RegistrarSeguimientoUseCase>();
+        services.AddScoped<ObtenerSeguimientoUseCase>();
+        services.AddScoped<AnularSeguimientoUseCase>();
+        services.AddScoped<ListarSeguimientosDePracticaUseCase>();
+        services.AddScoped<RegistrarObservacionUseCase>();
+        services.AddScoped<AnularObservacionUseCase>();
 
         return services;
     }

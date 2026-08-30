@@ -4,10 +4,21 @@ namespace Practikap.Domain.Interfaces;
 
 /// <summary>
 /// Contrato de acceso a <see cref="Observacion"/>. Modulo M4.
-/// Igual que el de seguimientos, no expone actualizacion ni eliminacion (RN-12).
+/// Igual que el de seguimientos, no expone eliminacion ni edicion de contenido
+/// (RN-12), y por el mismo motivo que documenta <see cref="ISeguimientoRepository"/>.
 /// </summary>
 public interface IObservacionRepository
 {
+    /// <summary>Obtiene una observacion por su identificador.</summary>
+    /// <param name="id">Identificador de la observacion.</param>
+    /// <param name="ct">Token de cancelacion de la solicitud.</param>
+    /// <returns>La observacion, o null si no existe.</returns>
+    /// <remarks>
+    /// Lo agrego I9: sin el, el caso de uso de anulacion no tiene forma de
+    /// cargar la entidad sobre la que invocar Observacion.Anular.
+    /// </remarks>
+    Task<Observacion?> ObtenerPorIdAsync(int id, CancellationToken ct);
+
     /// <summary>Lista las observaciones asociadas a un seguimiento.</summary>
     /// <param name="seguimientoId">Seguimiento cuyas observaciones se consultan.</param>
     /// <param name="ct">Token de cancelacion de la solicitud.</param>
@@ -21,11 +32,10 @@ public interface IObservacionRepository
     Task<int> AgregarAsync(Observacion observacion, CancellationToken ct);
 
     /// <summary>
-    /// Marca una observacion como anulada. Unica alteracion permitida por
-    /// RN-12, reservada al Administrador.
+    /// Registra una observacion que llega desatada. Es la via por la que se
+    /// persiste la marca de anulacion, unica alteracion que RN-12 permite.
     /// </summary>
-    /// <param name="id">Identificador de la observacion.</param>
-    /// <param name="anuladoPorId">Administrador que ejecuta la anulacion.</param>
+    /// <param name="observacion">Observacion ya modificada por el Dominio.</param>
     /// <param name="ct">Token de cancelacion de la solicitud.</param>
-    Task AnularAsync(int id, int anuladoPorId, CancellationToken ct);
+    Task ActualizarAsync(Observacion observacion, CancellationToken ct);
 }
