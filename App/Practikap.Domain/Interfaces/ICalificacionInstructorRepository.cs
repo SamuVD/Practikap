@@ -9,6 +9,18 @@ namespace Practikap.Domain.Interfaces;
 /// <remarks>
 /// Este repositorio nunca consulta al de la direccion contraria: RN-10 exige
 /// que ambas calificaciones sean independientes entre si.
+///
+/// El contrato no ofrece metodo de eliminacion ni ninguno que reciba el valor o
+/// el comentario de un registro ya existente: la calificacion es inmutable por
+/// RN-12 y la unica alteracion admitida es la marca de anulacion, que solo el
+/// Dominio sabe aplicar.
+///
+/// ActualizarAsync no contradice lo anterior: no lleva datos, solo registra una
+/// entidad que llego desatada. Quien decide que cambia es
+/// <see cref="CalificacionInstructor.Anular"/>, invocado desde el caso de uso.
+/// J7 lo puso en lugar de AnularAsync(id, anuladoPorId, ct), que obligaba al
+/// repositorio a cargar la entidad e invocar dominio. Extiende a M5 lo que H28
+/// decidio en M3 e I9 aplico en M4.
 /// </remarks>
 public interface ICalificacionInstructorRepository
 {
@@ -44,11 +56,11 @@ public interface ICalificacionInstructorRepository
     Task<int> AgregarAsync(CalificacionInstructor calificacion, CancellationToken ct);
 
     /// <summary>
-    /// Marca una calificacion como anulada. Unica alteracion permitida por
-    /// RN-12, reservada al Administrador.
+    /// Registra una calificacion que llega desatada. Es la via por la que se
+    /// persiste la marca de anulacion, unica alteracion que RN-12 permite y
+    /// reservada al Administrador.
     /// </summary>
-    /// <param name="id">Identificador de la calificacion.</param>
-    /// <param name="anuladoPorId">Administrador que ejecuta la anulacion.</param>
+    /// <param name="calificacion">Calificacion ya modificada por el Dominio.</param>
     /// <param name="ct">Token de cancelacion de la solicitud.</param>
-    Task AnularAsync(int id, int anuladoPorId, CancellationToken ct);
+    Task ActualizarAsync(CalificacionInstructor calificacion, CancellationToken ct);
 }

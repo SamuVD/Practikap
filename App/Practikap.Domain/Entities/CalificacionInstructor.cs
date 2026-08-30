@@ -3,11 +3,17 @@ using Practikap.Domain.Exceptions;
 namespace Practikap.Domain.Entities;
 
 /// <summary>
-/// Calificacion en direccion Instructor hacia Aprendiz. Entidad dependiente de
+/// Calificacion en direccion Instructor hacia Aprendiz: <b>la emite el Instructor
+/// sobre el Aprendiz</b> de la practica. Entidad dependiente de
 /// <see cref="Practica"/> y completamente independiente de su contraparte:
 /// RN-10 establece que ninguna de las dos direcciones condiciona a la otra.
 /// </summary>
 /// <remarks>
+/// La direccion queda escrita y no deducida del nombre de la clase (J1), porque
+/// el nombre por si solo admite las dos lecturas: quien califica o a quien se
+/// califica. Aqui el Instructor es el emisor. Su contraparte,
+/// <see cref="CalificacionAprendiz"/>, es la que emite el Aprendiz.
+///
 /// CU-05 y HU-07 exigen tablas separadas en base de datos, de ahi que existan
 /// dos entidades de forma identica en lugar de una sola con un discriminador.
 /// </remarks>

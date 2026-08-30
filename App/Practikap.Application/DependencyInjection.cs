@@ -2,6 +2,7 @@ using AutoMapper;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Practikap.Application.UseCases.Autenticacion;
+using Practikap.Application.UseCases.Calificaciones;
 using Practikap.Application.UseCases.Empresas;
 using Practikap.Application.UseCases.Fichas;
 using Practikap.Application.UseCases.Observaciones;
@@ -77,6 +78,12 @@ public static class DependencyInjection
         services.AddScoped<ListarSeguimientosDePracticaUseCase>();
         services.AddScoped<RegistrarObservacionUseCase>();
         services.AddScoped<AnularObservacionUseCase>();
+        // Modulo M5 - Calificacion bidireccional.
+        services.AddScoped<RegistrarCalificacionInstructorUseCase>();
+        services.AddScoped<RegistrarCalificacionAprendizUseCase>();
+        services.AddScoped<ListarCalificacionesDePracticaUseCase>();
+        services.AddScoped<AnularCalificacionInstructorUseCase>();
+        services.AddScoped<AnularCalificacionAprendizUseCase>();
 
         return services;
     }
