@@ -39,6 +39,7 @@ public sealed class CrearReglaUseCase
 {
     private readonly IReglaRepository _reglaRepo;
     private readonly IContextoUsuario _contexto;
+    private readonly IRegistradorDeAuditoria _auditor;
     private readonly IUnidadDeTrabajo _unidadDeTrabajo;
     private readonly IValidator<CrearReglaRequest> _validador;
     private readonly IMapper _mapeador;
@@ -47,6 +48,7 @@ public sealed class CrearReglaUseCase
     /// <summary>Crea el caso de uso.</summary>
     /// <param name="reglaRepo">Acceso a las reglas del Motor.</param>
     /// <param name="contexto">Identidad del solicitante (ADR-03).</param>
+    /// <param name="auditor">Bitacora de acciones sensibles (P12, P13).</param>
     /// <param name="unidadDeTrabajo">Punto de confirmacion (ADR-02).</param>
     /// <param name="validador">Validador de forma del DTO (RN-15).</param>
     /// <param name="mapeador">Proyeccion a DTO de salida.</param>
@@ -54,6 +56,7 @@ public sealed class CrearReglaUseCase
     public CrearReglaUseCase(
         IReglaRepository reglaRepo,
         IContextoUsuario contexto,
+        IRegistradorDeAuditoria auditor,
         IUnidadDeTrabajo unidadDeTrabajo,
         IValidator<CrearReglaRequest> validador,
         IMapper mapeador,
@@ -61,6 +64,7 @@ public sealed class CrearReglaUseCase
     {
         _reglaRepo = reglaRepo;
         _contexto = contexto;
+        _auditor = auditor;
         _unidadDeTrabajo = unidadDeTrabajo;
         _validador = validador;
         _mapeador = mapeador;
@@ -105,6 +109,24 @@ public sealed class CrearReglaUseCase
         // Hasta aqui regla.Id vale 0 y las dos fechas son el valor por defecto de
         // DateTime. La confirmacion asigna el primero y trae de vuelta las que
         // escribio MySQL.
+        await _unidadDeTrabajo.GuardarCambiosAsync(ct);
+
+        // DESVIACION DOCUMENTADA DE P12, y de las dos del proyecto es la unica que
+        // cuesta algo. La regla la impone el constructor de RegistroAuditoria, que
+        // exige un entidad_id mayor que cero: hasta la linea de arriba no lo hay, y
+        // el asiento no se puede componer antes. De modo que aqui hay dos
+        // confirmaciones y no una, contra lo que ADR-02 promete en los otros diez
+        // enganches.
+        //
+        // Se paga a sabiendas. La alternativa era no auditar el alta, y RN-08 es
+        // justamente la regla que dice que el comportamiento de la plataforma se
+        // configura sin desplegar: un alta de regla sin traza de quien la creo
+        // vaciaria de sentido a la bitacora en el unico modulo donde mas importa.
+        //
+        // El riesgo real es acotado: si esta segunda confirmacion falla, la regla
+        // queda creada sin asiento y la peticion responde 500. No es un fallo
+        // silencioso, que es lo que P15 existe para impedir.
+        await _auditor.PorConfiguracionDeReglaAsync(regla.Id, regla.Nombre, "Alta", ct);
         await _unidadDeTrabajo.GuardarCambiosAsync(ct);
 
         _registro.LogInformation(

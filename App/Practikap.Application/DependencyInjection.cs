@@ -145,11 +145,18 @@ public static class DependencyInjection
         services.AddScoped<IGeneradorDeNotificaciones, GeneradorDeNotificaciones>();
 
         // Punto unico de disparo del Motor de Reglas (N11), enumerado a mano por
-        // la misma razon de alcance: sus cinco colaboradores comparten el DbContext
+        // la misma razon de alcance: sus seis colaboradores comparten el DbContext
         // de la peticion (ADR-02, ADR-05). Es lo que permite que el cambio de
         // estado de la practica y su notificacion de riesgo se confirmen en la
         // misma transaccion que la calificacion que los disparo.
         services.AddScoped<IEvaluadorDeReglas, EvaluadorDeReglas>();
+
+        // Punto unico de escritura de la bitacora (P12), la tercera pieza de
+        // Aplicacion que no es caso de uso y la primera que conoce al actor. Mismo
+        // alcance y misma razon que las dos de arriba: su repositorio comparte el
+        // DbContext de la peticion (ADR-02, ADR-05), y es lo que permite que una
+        // accion sensible y su asiento se confirmen en la misma transaccion.
+        services.AddScoped<IRegistradorDeAuditoria, RegistradorDeAuditoria>();
 
         return services;
     }

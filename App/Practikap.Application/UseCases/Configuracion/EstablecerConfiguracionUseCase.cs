@@ -56,6 +56,7 @@ public sealed class EstablecerConfiguracionUseCase
 {
     private readonly IConfiguracionRepository _configuracionRepo;
     private readonly IContextoUsuario _contexto;
+    private readonly IRegistradorDeAuditoria _auditor;
     private readonly IUnidadDeTrabajo _unidadDeTrabajo;
     private readonly IValidator<EstablecerConfiguracionRequest> _validador;
     private readonly IMapper _mapeador;
@@ -64,6 +65,7 @@ public sealed class EstablecerConfiguracionUseCase
     /// <summary>Crea el caso de uso.</summary>
     /// <param name="configuracionRepo">Acceso al almacen clave/valor.</param>
     /// <param name="contexto">Identidad del solicitante (ADR-03).</param>
+    /// <param name="auditor">Bitacora de acciones sensibles (P12, P13).</param>
     /// <param name="unidadDeTrabajo">Punto de confirmacion (ADR-02).</param>
     /// <param name="validador">Validador de forma del DTO (RN-15).</param>
     /// <param name="mapeador">Proyeccion a DTO de salida.</param>
@@ -71,6 +73,7 @@ public sealed class EstablecerConfiguracionUseCase
     public EstablecerConfiguracionUseCase(
         IConfiguracionRepository configuracionRepo,
         IContextoUsuario contexto,
+        IRegistradorDeAuditoria auditor,
         IUnidadDeTrabajo unidadDeTrabajo,
         IValidator<EstablecerConfiguracionRequest> validador,
         IMapper mapeador,
@@ -78,6 +81,7 @@ public sealed class EstablecerConfiguracionUseCase
     {
         _configuracionRepo = configuracionRepo;
         _contexto = contexto;
+        _auditor = auditor;
         _unidadDeTrabajo = unidadDeTrabajo;
         _validador = validador;
         _mapeador = mapeador;
@@ -119,12 +123,25 @@ public sealed class EstablecerConfiguracionUseCase
                 ReglasDeConfiguracion.DescripcionDe(clave));
 
             await _configuracionRepo.AgregarAsync(entrada, ct);
+
+            // DESVIACION DOCUMENTADA DE P12, gemela de la del alta de una regla y
+            // por el mismo motivo: entrada.Id vale 0 hasta esta linea y el
+            // constructor de RegistroAuditoria lo exige mayor que cero. Solo la
+            // creacion confirma dos veces; la actualizacion de abajo sigue con una
+            // sola, que es el caso corriente.
+            await _unidadDeTrabajo.GuardarCambiosAsync(ct);
         }
         else
         {
             // El dominio se invoca desde aqui y no desde el repositorio (P4).
             entrada.Establecer(request.Valor, _contexto.UsuarioId);
         }
+
+        // RF-09, RN-08. Una sola llamada para las dos ramas: lo que se asienta es
+        // que un Administrador fijo una clave, y que la entrada naciera en ese
+        // mismo PUT o ya existiera no cambia el hecho.
+        await _auditor.PorCambioDeConfiguracionAsync(
+            entrada.Id, entrada.Clave, entrada.Valor, ct);
 
         await _unidadDeTrabajo.GuardarCambiosAsync(ct);
 

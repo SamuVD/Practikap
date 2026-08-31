@@ -24,6 +24,7 @@ public sealed class ActualizarPracticaUseCase
     private readonly IEmpresaRepository _empresaRepo;
     private readonly IUsuarioRepository _usuarioRepo;
     private readonly IContextoUsuario _contexto;
+    private readonly IRegistradorDeAuditoria _auditor;
     private readonly IUnidadDeTrabajo _unidadDeTrabajo;
     private readonly IValidator<ActualizarPracticaRequest> _validador;
     private readonly IMapper _mapeador;
@@ -34,6 +35,7 @@ public sealed class ActualizarPracticaUseCase
     /// <param name="empresaRepo">Acceso a empresas receptoras.</param>
     /// <param name="usuarioRepo">Acceso a usuarios, para verificar los participantes (H7).</param>
     /// <param name="contexto">Identidad del solicitante (ADR-03).</param>
+    /// <param name="auditor">Bitacora de acciones sensibles (P12, P13).</param>
     /// <param name="unidadDeTrabajo">Punto de confirmacion (ADR-02).</param>
     /// <param name="validador">Validador de forma del DTO (RN-15).</param>
     /// <param name="mapeador">Proyeccion a DTO de salida.</param>
@@ -43,6 +45,7 @@ public sealed class ActualizarPracticaUseCase
         IEmpresaRepository empresaRepo,
         IUsuarioRepository usuarioRepo,
         IContextoUsuario contexto,
+        IRegistradorDeAuditoria auditor,
         IUnidadDeTrabajo unidadDeTrabajo,
         IValidator<ActualizarPracticaRequest> validador,
         IMapper mapeador,
@@ -52,6 +55,7 @@ public sealed class ActualizarPracticaUseCase
         _empresaRepo = empresaRepo;
         _usuarioRepo = usuarioRepo;
         _contexto = contexto;
+        _auditor = auditor;
         _unidadDeTrabajo = unidadDeTrabajo;
         _validador = validador;
         _mapeador = mapeador;
@@ -100,10 +104,30 @@ public sealed class ActualizarPracticaUseCase
         // El validador ya confirmo que el literal es uno de los cuatro (H31).
         var modalidad = Enum.Parse<ModalidadPractica>(request.Modalidad);
 
+        // Los dos participantes se capturan antes de reasignar, porque Reasignar
+        // los pisa. Son ademas los que deciden si hay asiento.
+        var instructorAnterior = practica.InstructorId;
+        var aprendizAnterior = practica.AprendizId;
+
         practica.Reasignar(request.InstructorId, request.AprendizId);
         practica.CambiarModalidad(modalidad, request.EmpresaId);
 
         await _practicaRepo.ActualizarAsync(practica, ct);
+
+        // RN-04, y solo cuando la asignacion cambia de verdad: una edicion que
+        // unicamente mueve la modalidad o la empresa no es una reasignacion y no
+        // deja rastro. Asentarla igual llenaria la bitacora de filas que dicen que
+        // nada se reasigno (P13).
+        if (instructorAnterior != practica.InstructorId
+            || aprendizAnterior != practica.AprendizId)
+        {
+            await _auditor.PorReasignacionAsync(
+                practica.Id,
+                instructorAnterior, practica.InstructorId,
+                aprendizAnterior, practica.AprendizId,
+                ct);
+        }
+
         await _unidadDeTrabajo.GuardarCambiosAsync(ct);
 
         _registro.LogInformation(

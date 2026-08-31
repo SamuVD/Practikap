@@ -29,6 +29,7 @@ public sealed class AnularSeguimientoUseCase
 {
     private readonly ISeguimientoRepository _seguimientoRepo;
     private readonly IContextoUsuario _contexto;
+    private readonly IRegistradorDeAuditoria _auditor;
     private readonly IUnidadDeTrabajo _unidadDeTrabajo;
     private readonly IMapper _mapeador;
     private readonly ILogger<AnularSeguimientoUseCase> _registro;
@@ -36,18 +37,21 @@ public sealed class AnularSeguimientoUseCase
     /// <summary>Crea el caso de uso.</summary>
     /// <param name="seguimientoRepo">Acceso a seguimientos.</param>
     /// <param name="contexto">Identidad del solicitante (ADR-03).</param>
+    /// <param name="auditor">Bitacora de acciones sensibles (P12, P13).</param>
     /// <param name="unidadDeTrabajo">Punto de confirmacion (ADR-02).</param>
     /// <param name="mapeador">Proyeccion a DTO de salida.</param>
     /// <param name="registro">Registro de eventos.</param>
     public AnularSeguimientoUseCase(
         ISeguimientoRepository seguimientoRepo,
         IContextoUsuario contexto,
+        IRegistradorDeAuditoria auditor,
         IUnidadDeTrabajo unidadDeTrabajo,
         IMapper mapeador,
         ILogger<AnularSeguimientoUseCase> registro)
     {
         _seguimientoRepo = seguimientoRepo;
         _contexto = contexto;
+        _auditor = auditor;
         _unidadDeTrabajo = unidadDeTrabajo;
         _mapeador = mapeador;
         _registro = registro;
@@ -74,6 +78,11 @@ public sealed class AnularSeguimientoUseCase
         seguimiento.Anular(_contexto.UsuarioId);
 
         await _seguimientoRepo.ActualizarAsync(seguimiento, ct);
+
+        // RN-12. Una de las cuatro anulaciones, todas con el mismo metodo y la
+        // entidad por parametro (P13).
+        await _auditor.PorAnulacionAsync(EntidadAuditada.Seguimientos, seguimiento.Id, ct);
+
         await _unidadDeTrabajo.GuardarCambiosAsync(ct);
 
         _registro.LogInformation(

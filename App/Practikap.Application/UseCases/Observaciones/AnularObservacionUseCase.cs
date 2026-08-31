@@ -23,6 +23,7 @@ public sealed class AnularObservacionUseCase
 {
     private readonly IObservacionRepository _observacionRepo;
     private readonly IContextoUsuario _contexto;
+    private readonly IRegistradorDeAuditoria _auditor;
     private readonly IUnidadDeTrabajo _unidadDeTrabajo;
     private readonly IMapper _mapeador;
     private readonly ILogger<AnularObservacionUseCase> _registro;
@@ -30,18 +31,21 @@ public sealed class AnularObservacionUseCase
     /// <summary>Crea el caso de uso.</summary>
     /// <param name="observacionRepo">Acceso a observaciones.</param>
     /// <param name="contexto">Identidad del solicitante (ADR-03).</param>
+    /// <param name="auditor">Bitacora de acciones sensibles (P12, P13).</param>
     /// <param name="unidadDeTrabajo">Punto de confirmacion (ADR-02).</param>
     /// <param name="mapeador">Proyeccion a DTO de salida.</param>
     /// <param name="registro">Registro de eventos.</param>
     public AnularObservacionUseCase(
         IObservacionRepository observacionRepo,
         IContextoUsuario contexto,
+        IRegistradorDeAuditoria auditor,
         IUnidadDeTrabajo unidadDeTrabajo,
         IMapper mapeador,
         ILogger<AnularObservacionUseCase> registro)
     {
         _observacionRepo = observacionRepo;
         _contexto = contexto;
+        _auditor = auditor;
         _unidadDeTrabajo = unidadDeTrabajo;
         _mapeador = mapeador;
         _registro = registro;
@@ -66,6 +70,10 @@ public sealed class AnularObservacionUseCase
         observacion.Anular(_contexto.UsuarioId);
 
         await _observacionRepo.ActualizarAsync(observacion, ct);
+
+        // RN-12, con el mismo enganche que el seguimiento (P13).
+        await _auditor.PorAnulacionAsync(EntidadAuditada.Observaciones, observacion.Id, ct);
+
         await _unidadDeTrabajo.GuardarCambiosAsync(ct);
 
         _registro.LogInformation(

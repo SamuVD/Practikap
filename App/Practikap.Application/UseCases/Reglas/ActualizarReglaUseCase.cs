@@ -41,6 +41,7 @@ public sealed class ActualizarReglaUseCase
 {
     private readonly IReglaRepository _reglaRepo;
     private readonly IContextoUsuario _contexto;
+    private readonly IRegistradorDeAuditoria _auditor;
     private readonly IUnidadDeTrabajo _unidadDeTrabajo;
     private readonly IValidator<ActualizarReglaRequest> _validador;
     private readonly IMapper _mapeador;
@@ -49,6 +50,7 @@ public sealed class ActualizarReglaUseCase
     /// <summary>Crea el caso de uso.</summary>
     /// <param name="reglaRepo">Acceso a las reglas del Motor.</param>
     /// <param name="contexto">Identidad del solicitante (ADR-03).</param>
+    /// <param name="auditor">Bitacora de acciones sensibles (P12, P13).</param>
     /// <param name="unidadDeTrabajo">Punto de confirmacion (ADR-02).</param>
     /// <param name="validador">Validador de forma del DTO (RN-15).</param>
     /// <param name="mapeador">Proyeccion a DTO de salida.</param>
@@ -56,6 +58,7 @@ public sealed class ActualizarReglaUseCase
     public ActualizarReglaUseCase(
         IReglaRepository reglaRepo,
         IContextoUsuario contexto,
+        IRegistradorDeAuditoria auditor,
         IUnidadDeTrabajo unidadDeTrabajo,
         IValidator<ActualizarReglaRequest> validador,
         IMapper mapeador,
@@ -63,6 +66,7 @@ public sealed class ActualizarReglaUseCase
     {
         _reglaRepo = reglaRepo;
         _contexto = contexto;
+        _auditor = auditor;
         _unidadDeTrabajo = unidadDeTrabajo;
         _validador = validador;
         _mapeador = mapeador;
@@ -108,6 +112,11 @@ public sealed class ActualizarReglaUseCase
             request.Prioridad);
 
         await _reglaRepo.ActualizarAsync(regla, ct);
+
+        // RN-08. Si el comportamiento de la plataforma se puede cambiar sin
+        // desplegar, la unica traza de quien lo cambio es esta (P13).
+        await _auditor.PorConfiguracionDeReglaAsync(regla.Id, regla.Nombre, "Edicion", ct);
+
         await _unidadDeTrabajo.GuardarCambiosAsync(ct);
 
         _registro.LogInformation(
