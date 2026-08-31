@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Practikap.Application.Validators.Configuracion;
 using Practikap.Application.Validators.Reglas;
 using Practikap.Domain.Entities;
 using Practikap.Domain.Enums;
@@ -22,7 +23,7 @@ namespace Practikap.Application.Common;
 ///
 /// Vive en Aplicacion y no en Infraestructura porque no toca EF Core: habla contra
 /// contratos del Dominio, igual que cualquier caso de uso. Y no es estatica como
-/// <c>AccesoALaPractica</c> porque tiene cinco colaboradores fijos, que conviene
+/// <c>AccesoALaPractica</c> porque tiene seis colaboradores fijos, que conviene
 /// inyectar una vez y no arrastrar por la firma de los dos puntos de enganche.
 ///
 /// <b>Ninguna condicion vive en este archivo.</b> La aritmetica es
@@ -38,6 +39,7 @@ internal sealed class EvaluadorDeReglas : IEvaluadorDeReglas
     private readonly ICalificacionInstructorRepository _calificacionRepo;
     private readonly ISeguimientoRepository _seguimientoRepo;
     private readonly IPracticaRepository _practicaRepo;
+    private readonly IConfiguracionRepository _configuracionRepo;
     private readonly IGeneradorDeNotificaciones _generador;
     private readonly ILogger<EvaluadorDeReglas> _registro;
 
@@ -46,6 +48,7 @@ internal sealed class EvaluadorDeReglas : IEvaluadorDeReglas
     /// <param name="calificacionRepo">Serie de calificaciones del instructor, insumo de calificacion_acumulada.</param>
     /// <param name="seguimientoRepo">Fecha del ultimo seguimiento, insumo de dias_sin_seguimiento.</param>
     /// <param name="practicaRepo">Registro del cambio de estado de la practica.</param>
+    /// <param name="configuracionRepo">Origen del estado por defecto de RN-06 (P11).</param>
     /// <param name="generador">Emision de la notificacion de tipo Riesgo (RN-09, L6).</param>
     /// <param name="registro">Registro de eventos.</param>
     public EvaluadorDeReglas(
@@ -53,6 +56,7 @@ internal sealed class EvaluadorDeReglas : IEvaluadorDeReglas
         ICalificacionInstructorRepository calificacionRepo,
         ISeguimientoRepository seguimientoRepo,
         IPracticaRepository practicaRepo,
+        IConfiguracionRepository configuracionRepo,
         IGeneradorDeNotificaciones generador,
         ILogger<EvaluadorDeReglas> registro)
     {
@@ -60,6 +64,7 @@ internal sealed class EvaluadorDeReglas : IEvaluadorDeReglas
         _calificacionRepo = calificacionRepo;
         _seguimientoRepo = seguimientoRepo;
         _practicaRepo = practicaRepo;
+        _configuracionRepo = configuracionRepo;
         _generador = generador;
         _registro = registro;
     }
@@ -104,17 +109,33 @@ internal sealed class EvaluadorDeReglas : IEvaluadorDeReglas
     private async Task EvaluarAsync(
         Practica practica, decimal? calificacionAcumulada, CancellationToken ct)
     {
-        // N14, y cubre las tres salidas de un golpe. Si la practica ya esta En
-        // riesgo no se reaplica la accion ni se vuelve a notificar: la alerta ya
-        // esta puesta y repetirla en cada calificacion inundaria la bandeja del
-        // instructor. Pendiente y Finalizada quedan fuera porque MarcarEnRiesgo
-        // lanzaria sobre ellas, y no es tarea del Motor decidir que hacer con una
-        // practica que todavia no arranco o que ya cerro.
+        // P16, y cierra la mitad de RN-06 que N4 dejo abierta en el 4.7. Una
+        // practica en Pendiente no llega nunca a evaluar reglas, de modo que el
+        // punto donde el estado por defecto pareceria ir —la salida por
+        // "ganadora is null" de mas abajo— es codigo muerto para ella. La lectura
+        // correcta es la inversa: una practica que el Motor no evalua no tiene
+        // regla que pueda coincidir, asi que "ninguna regla activa coincide" es
+        // cierto para ella por construccion, y es aqui donde el defecto se aplica.
+        if (practica.Estado == EstadoPractica.Pendiente)
+        {
+            await AplicarEstadoPorDefectoAsync(practica, ct);
+            return;
+        }
+
+        // N14, y cubre las dos salidas restantes de un golpe. Si la practica ya
+        // esta En riesgo no se reaplica la accion ni se vuelve a notificar: la
+        // alerta ya esta puesta y repetirla en cada calificacion inundaria la
+        // bandeja del instructor. Finalizada queda fuera porque MarcarEnRiesgo
+        // lanzaria sobre ella, y no es tarea del Motor decidir que hacer con una
+        // practica que ya cerro.
+        //
+        // La guarda no se relajo al agregar la rama de arriba: ninguna regla
+        // evalua jamas una practica que no este En curso, que es lo que N14 dice.
         //
         // De aqui sale tambien la otra mitad de N14: el Motor solo sabe llamar a
-        // MarcarEnRiesgo y no tiene ninguna ruta hacia CambiarEstado, de modo que
-        // una practica no vuelve a En curso porque el promedio se recupere. Ese
-        // retroceso es del Administrador (RN-05, H17).
+        // MarcarEnRiesgo y no tiene ninguna ruta hacia CambiarEstado desde la rama
+        // de reglas, de modo que una practica no vuelve a En curso porque el
+        // promedio se recupere. Ese retroceso es del Administrador (RN-05, H17).
         if (practica.Estado != EstadoPractica.EnCurso)
             return;
 
@@ -142,13 +163,87 @@ internal sealed class EvaluadorDeReglas : IEvaluadorDeReglas
                 ganadora = candidata;
         }
 
-        // N4. Si ninguna regla activa coincide no se hace nada: no se aplica un
-        // estado por defecto ni se consulta la tabla de configuracion, que es de
-        // M8. La divergencia con el flujo alternativo de CU-02 es deliberada.
+        // N4, con la precision que P16 le agrega. Si ninguna regla activa coincide
+        // sobre una practica En curso no se hace nada, y en particular no se le
+        // aplica el estado por defecto: aquel es de una practica que todavia no
+        // arranco, y usarlo aqui haria que el Motor moviera de estado a una
+        // practica en marcha cada vez que se registrara una calificacion que no
+        // dispara nada. El defecto se aplica arriba y solo alli.
         if (ganadora is null)
             return;
 
         await AplicarAsync(practica, ganadora, ct);
+    }
+
+    /// <summary>
+    /// Aplica a una practica en Pendiente el estado por defecto que el
+    /// Administrador configuro, cerrando RN-06 (P11, P16).
+    /// </summary>
+    /// <param name="practica">Practica en Pendiente, rastreada por el caso de uso.</param>
+    /// <param name="ct">Token de cancelacion de la solicitud.</param>
+    /// <remarks>
+    /// <b>Se degrada, no se cae</b> (P17). Sale sin hacer nada en tres casos, con
+    /// la misma forma de la rama de <see cref="AplicarAsync"/> que atiende a la
+    /// accion que el Motor no sabe ejecutar:
+    ///
+    /// - la clave no esta configurada, y entonces no hay nada que aplicar ni nada
+    ///   que anotar: es el estado normal de un sistema que no uso el panel todavia;
+    /// - el valor no es un miembro de EstadoPractica, que solo puede pasar si
+    ///   alguien escribio en MySQL por fuera de la API, porque
+    ///   ReglasDeConfiguracion.ExigirValorValido lo acota en el PUT;
+    /// - el valor es un estado real pero no un avance desde Pendiente.
+    ///
+    /// Esa tercera guarda es la que evita un absurdo concreto: la unica transicion
+    /// de avance que sale de Pendiente es la que lleva a En curso, de modo que un
+    /// estado_practica_por_defecto puesto en Finalizada o En riesgo haria que
+    /// CambiarEstado lanzara AutorizacionException y que un POST
+    /// /api/calificaciones perfectamente legitimo respondiera 403. La pregunta se
+    /// le hace a <c>Practica.EsAvance</c> y no a un literal duplicado aqui, para
+    /// que la tabla de RN-05 siga teniendo una sola declaracion.
+    ///
+    /// <b>No deja asiento en la bitacora</b> (P18). La auditoria registra acciones
+    /// sensibles de un actor humano (RN-01, RN-05, RN-08, RN-12) y esta es una
+    /// transicion automatica, igual que el MarcarEnRiesgo de la rama de reglas, que
+    /// tampoco la deja. Si deja LogInformation.
+    ///
+    /// Y como todo lo demas en esta clase, no confirma: el cambio de estado viaja
+    /// en el SaveChanges del caso de uso que disparo la evaluacion (N11, ADR-02).
+    /// </remarks>
+    private async Task AplicarEstadoPorDefectoAsync(Practica practica, CancellationToken ct)
+    {
+        var valor = await _configuracionRepo.ObtenerValorAsync(
+            ReglasDeConfiguracion.EstadoPracticaPorDefecto, ct);
+
+        if (string.IsNullOrWhiteSpace(valor))
+            return;
+
+        // Se compara contra los nombres de miembro y no con Enum.TryParse a secas,
+        // que aceptaria tambien el numero subyacente: el criterio es el mismo de
+        // ExigirValorValido, y los enumerados viajan como texto (H31).
+        if (!Enum.GetNames<EstadoPractica>().Contains(valor, StringComparer.Ordinal))
+        {
+            _registro.LogWarning(
+                "La clave {Clave} vale '{Valor}', que no es un estado de practica. No se aplico ningun estado por defecto sobre la practica {PracticaId}.",
+                ReglasDeConfiguracion.EstadoPracticaPorDefecto, valor, practica.Id);
+            return;
+        }
+
+        var destino = Enum.Parse<EstadoPractica>(valor);
+
+        if (!Practica.EsAvance(EstadoPractica.Pendiente, destino))
+        {
+            _registro.LogWarning(
+                "La clave {Clave} vale '{Valor}', que no es un avance desde Pendiente y exigiria un Administrador (RN-05). No se aplico ningun estado por defecto sobre la practica {PracticaId}.",
+                ReglasDeConfiguracion.EstadoPracticaPorDefecto, valor, practica.Id);
+            return;
+        }
+
+        practica.CambiarEstado(destino, esAdministrador: false);
+        await _practicaRepo.ActualizarAsync(practica, ct);
+
+        _registro.LogInformation(
+            "Ninguna regla activa podia coincidir sobre la practica {PracticaId}, que estaba en Pendiente. Se aplico el estado por defecto {Estado} (RN-06).",
+            practica.Id, destino);
     }
 
     /// <summary>

@@ -40,6 +40,7 @@ public sealed class CambiarActivaReglaUseCase
 {
     private readonly IReglaRepository _reglaRepo;
     private readonly IContextoUsuario _contexto;
+    private readonly IRegistradorDeAuditoria _auditor;
     private readonly IUnidadDeTrabajo _unidadDeTrabajo;
     private readonly IMapper _mapeador;
     private readonly ILogger<CambiarActivaReglaUseCase> _registro;
@@ -47,18 +48,21 @@ public sealed class CambiarActivaReglaUseCase
     /// <summary>Crea el caso de uso.</summary>
     /// <param name="reglaRepo">Acceso a las reglas del Motor.</param>
     /// <param name="contexto">Identidad del solicitante (ADR-03).</param>
+    /// <param name="auditor">Bitacora de acciones sensibles (P12, P13).</param>
     /// <param name="unidadDeTrabajo">Punto de confirmacion (ADR-02).</param>
     /// <param name="mapeador">Proyeccion a DTO de salida.</param>
     /// <param name="registro">Registro de eventos.</param>
     public CambiarActivaReglaUseCase(
         IReglaRepository reglaRepo,
         IContextoUsuario contexto,
+        IRegistradorDeAuditoria auditor,
         IUnidadDeTrabajo unidadDeTrabajo,
         IMapper mapeador,
         ILogger<CambiarActivaReglaUseCase> registro)
     {
         _reglaRepo = reglaRepo;
         _contexto = contexto;
+        _auditor = auditor;
         _unidadDeTrabajo = unidadDeTrabajo;
         _mapeador = mapeador;
         _registro = registro;
@@ -86,6 +90,15 @@ public sealed class CambiarActivaReglaUseCase
             regla.Desactivar();
 
         await _reglaRepo.ActualizarAsync(regla, ct);
+
+        // RN-08. El asiento se escribe tambien cuando la llamada es idempotente y
+        // no cambia nada: lo que la bitacora registra es que alguien ejecuto la
+        // accion, no que el valor se haya movido. Es lo contrario del criterio de
+        // la reasignacion, y la diferencia esta en que alli la operacion abarca
+        // mas cosas y el asiento habla solo de una de ellas (P13).
+        await _auditor.PorConfiguracionDeReglaAsync(
+            regla.Id, regla.Nombre, regla.Activa ? "Activacion" : "Desactivacion", ct);
+
         await _unidadDeTrabajo.GuardarCambiosAsync(ct);
 
         _registro.LogInformation(

@@ -26,6 +26,7 @@ public sealed class CambiarEstadoPracticaUseCase
 {
     private readonly IPracticaRepository _practicaRepo;
     private readonly IContextoUsuario _contexto;
+    private readonly IRegistradorDeAuditoria _auditor;
     private readonly IUnidadDeTrabajo _unidadDeTrabajo;
     private readonly IValidator<CambiarEstadoPracticaRequest> _validador;
     private readonly IMapper _mapeador;
@@ -34,6 +35,7 @@ public sealed class CambiarEstadoPracticaUseCase
     /// <summary>Crea el caso de uso.</summary>
     /// <param name="practicaRepo">Acceso a practicas.</param>
     /// <param name="contexto">Identidad del solicitante (ADR-03).</param>
+    /// <param name="auditor">Bitacora de acciones sensibles (P12, P13, P14).</param>
     /// <param name="unidadDeTrabajo">Punto de confirmacion (ADR-02).</param>
     /// <param name="validador">Validador de forma del DTO (RN-15).</param>
     /// <param name="mapeador">Proyeccion a DTO de salida.</param>
@@ -41,6 +43,7 @@ public sealed class CambiarEstadoPracticaUseCase
     public CambiarEstadoPracticaUseCase(
         IPracticaRepository practicaRepo,
         IContextoUsuario contexto,
+        IRegistradorDeAuditoria auditor,
         IUnidadDeTrabajo unidadDeTrabajo,
         IValidator<CambiarEstadoPracticaRequest> validador,
         IMapper mapeador,
@@ -48,6 +51,7 @@ public sealed class CambiarEstadoPracticaUseCase
     {
         _practicaRepo = practicaRepo;
         _contexto = contexto;
+        _auditor = auditor;
         _unidadDeTrabajo = unidadDeTrabajo;
         _validador = validador;
         _mapeador = mapeador;
@@ -89,6 +93,13 @@ public sealed class CambiarEstadoPracticaUseCase
         // operacion la regla de RN-05 seguira siendo correcta sin tocar nada.
         var esAdministrador = _contexto.Alcance == AlcanceConsulta.Global;
 
+        // P14, y hay que leerlo aqui: tanto Finalizar como CambiarEstado pisan
+        // practica.Estado, de modo que capturarlo despues compararia el destino
+        // contra si mismo y todos los asientos saldrian Otro, incluidos los
+        // retrocesos que RN-05 reserva al Administrador y que son la razon de que
+        // esta accion se audite.
+        var estadoAnterior = practica.Estado;
+
         // H30: Finalizar es lo unico que escribe FechaFin, y siempre junto a la
         // transicion. Sin fecha en el cuerpo se conserva la prevista en el alta.
         if (estado == EstadoPractica.Finalizada && request.FechaFin is not null)
@@ -97,6 +108,12 @@ public sealed class CambiarEstadoPracticaUseCase
             practica.CambiarEstado(estado, esAdministrador);
 
         await _practicaRepo.ActualizarAsync(practica, ct);
+
+        // RN-05. Se audita todo cambio manual y no solo el retroceso: el
+        // registrador decide el rotulo, este archivo solo aporta los dos extremos.
+        await _auditor.PorCambioDeEstadoDePracticaAsync(
+            practica.Id, estadoAnterior, practica.Estado, ct);
+
         await _unidadDeTrabajo.GuardarCambiosAsync(ct);
 
         _registro.LogInformation(

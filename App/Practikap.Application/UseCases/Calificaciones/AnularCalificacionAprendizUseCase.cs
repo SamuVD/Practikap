@@ -29,6 +29,7 @@ public sealed class AnularCalificacionAprendizUseCase
 {
     private readonly ICalificacionAprendizRepository _calificacionRepo;
     private readonly IContextoUsuario _contexto;
+    private readonly IRegistradorDeAuditoria _auditor;
     private readonly IUnidadDeTrabajo _unidadDeTrabajo;
     private readonly IMapper _mapeador;
     private readonly ILogger<AnularCalificacionAprendizUseCase> _registro;
@@ -36,18 +37,21 @@ public sealed class AnularCalificacionAprendizUseCase
     /// <summary>Crea el caso de uso.</summary>
     /// <param name="calificacionRepo">Acceso a las evaluaciones del aprendiz.</param>
     /// <param name="contexto">Identidad del solicitante (ADR-03).</param>
+    /// <param name="auditor">Bitacora de acciones sensibles (P12, P13).</param>
     /// <param name="unidadDeTrabajo">Punto de confirmacion (ADR-02).</param>
     /// <param name="mapeador">Proyeccion a DTO de salida.</param>
     /// <param name="registro">Registro de eventos.</param>
     public AnularCalificacionAprendizUseCase(
         ICalificacionAprendizRepository calificacionRepo,
         IContextoUsuario contexto,
+        IRegistradorDeAuditoria auditor,
         IUnidadDeTrabajo unidadDeTrabajo,
         IMapper mapeador,
         ILogger<AnularCalificacionAprendizUseCase> registro)
     {
         _calificacionRepo = calificacionRepo;
         _contexto = contexto;
+        _auditor = auditor;
         _unidadDeTrabajo = unidadDeTrabajo;
         _mapeador = mapeador;
         _registro = registro;
@@ -75,7 +79,12 @@ public sealed class AnularCalificacionAprendizUseCase
 
         // No hay llamada al Motor, a diferencia de la direccion contraria. La
         // Ronda 2 del 4.7 retiro de aqui el enganche que el 4.4 habia marcado
-        // (N12).
+        // (N12). El de auditoria si esta en las dos: RN-12 no distingue
+        // direcciones, y lo que se asienta es la anulacion, no su efecto sobre el
+        // promedio.
+        await _auditor.PorAnulacionAsync(
+            EntidadAuditada.CalificacionesAprendiz, calificacion.Id, ct);
+
         await _unidadDeTrabajo.GuardarCambiosAsync(ct);
 
         _registro.LogInformation(

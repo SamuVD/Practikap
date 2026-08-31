@@ -2,8 +2,10 @@ using AutoMapper;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Practikap.Application.Common;
+using Practikap.Application.UseCases.Auditoria;
 using Practikap.Application.UseCases.Autenticacion;
 using Practikap.Application.UseCases.Calificaciones;
+using Practikap.Application.UseCases.Configuracion;
 using Practikap.Application.UseCases.Empresas;
 using Practikap.Application.UseCases.Fichas;
 using Practikap.Application.UseCases.Mensajes;
@@ -125,6 +127,15 @@ public static class DependencyInjection
         services.AddScoped<ListarReportesUseCase>();
         services.AddScoped<ObtenerReporteUseCase>();
         services.AddScoped<ExportarReporteUseCase>();
+        // Modulo M8 - Panel de Administracion, paso 4.9. Cuatro casos de uso y no
+        // mas: M8 no reimplementa usuarios, programas ni reglas, que cerraron los
+        // pasos 4.1, 4.2 y 4.7 (P1). ReglasDeConfiguracion no aparece aqui: es
+        // estatica, sin estado y sin dependencias, con el mismo criterio que
+        // ReglasDeMotor y ReglasDeEnumerado.
+        services.AddScoped<ListarConfiguracionUseCase>();
+        services.AddScoped<ObtenerConfiguracionUseCase>();
+        services.AddScoped<EstablecerConfiguracionUseCase>();
+        services.AddScoped<ListarAuditoriaUseCase>();
 
         // Punto unico de emision de notificaciones (L6). No es un caso de uso,
         // pero se enumera a mano por el mismo motivo que ellos: tiene alcance
@@ -134,11 +145,18 @@ public static class DependencyInjection
         services.AddScoped<IGeneradorDeNotificaciones, GeneradorDeNotificaciones>();
 
         // Punto unico de disparo del Motor de Reglas (N11), enumerado a mano por
-        // la misma razon de alcance: sus cinco colaboradores comparten el DbContext
+        // la misma razon de alcance: sus seis colaboradores comparten el DbContext
         // de la peticion (ADR-02, ADR-05). Es lo que permite que el cambio de
         // estado de la practica y su notificacion de riesgo se confirmen en la
         // misma transaccion que la calificacion que los disparo.
         services.AddScoped<IEvaluadorDeReglas, EvaluadorDeReglas>();
+
+        // Punto unico de escritura de la bitacora (P12), la tercera pieza de
+        // Aplicacion que no es caso de uso y la primera que conoce al actor. Mismo
+        // alcance y misma razon que las dos de arriba: su repositorio comparte el
+        // DbContext de la peticion (ADR-02, ADR-05), y es lo que permite que una
+        // accion sensible y su asiento se confirmen en la misma transaccion.
+        services.AddScoped<IRegistradorDeAuditoria, RegistradorDeAuditoria>();
 
         return services;
     }

@@ -28,6 +28,7 @@ public sealed class CambiarEstadoUsuarioUseCase
 {
     private readonly IUsuarioRepository _usuarioRepo;
     private readonly IContextoUsuario _contexto;
+    private readonly IRegistradorDeAuditoria _auditor;
     private readonly IUnidadDeTrabajo _unidadDeTrabajo;
     private readonly IMapper _mapeador;
     private readonly ILogger<CambiarEstadoUsuarioUseCase> _registro;
@@ -35,18 +36,21 @@ public sealed class CambiarEstadoUsuarioUseCase
     /// <summary>Crea el caso de uso.</summary>
     /// <param name="usuarioRepo">Acceso a usuarios.</param>
     /// <param name="contexto">Identidad del solicitante (ADR-03).</param>
+    /// <param name="auditor">Bitacora de acciones sensibles (P12, P13).</param>
     /// <param name="unidadDeTrabajo">Punto de confirmacion (ADR-02).</param>
     /// <param name="mapeador">Proyeccion a DTO de salida.</param>
     /// <param name="registro">Registro de eventos.</param>
     public CambiarEstadoUsuarioUseCase(
         IUsuarioRepository usuarioRepo,
         IContextoUsuario contexto,
+        IRegistradorDeAuditoria auditor,
         IUnidadDeTrabajo unidadDeTrabajo,
         IMapper mapeador,
         ILogger<CambiarEstadoUsuarioUseCase> registro)
     {
         _usuarioRepo = usuarioRepo;
         _contexto = contexto;
+        _auditor = auditor;
         _unidadDeTrabajo = unidadDeTrabajo;
         _mapeador = mapeador;
         _registro = registro;
@@ -75,6 +79,10 @@ public sealed class CambiarEstadoUsuarioUseCase
             usuario.Activar();
         else
             usuario.Desactivar();
+
+        // La baja de una cuenta es una accion sensible aunque no tenga literal
+        // propio en el ENUM de auditoria.accion: entra como Otro (P13).
+        await _auditor.PorCambioDeEstadoDeUsuarioAsync(usuario.Id, request.Activo, ct);
 
         await _unidadDeTrabajo.GuardarCambiosAsync(ct);
 

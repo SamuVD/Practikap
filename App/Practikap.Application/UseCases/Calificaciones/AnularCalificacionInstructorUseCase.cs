@@ -36,6 +36,7 @@ public sealed class AnularCalificacionInstructorUseCase
     private readonly IPracticaRepository _practicaRepo;
     private readonly IContextoUsuario _contexto;
     private readonly IEvaluadorDeReglas _evaluador;
+    private readonly IRegistradorDeAuditoria _auditor;
     private readonly IUnidadDeTrabajo _unidadDeTrabajo;
     private readonly IMapper _mapeador;
     private readonly ILogger<AnularCalificacionInstructorUseCase> _registro;
@@ -45,6 +46,7 @@ public sealed class AnularCalificacionInstructorUseCase
     /// <param name="practicaRepo">Acceso a practicas, para entregarle al Motor la que se recalcula.</param>
     /// <param name="contexto">Identidad del solicitante (ADR-03).</param>
     /// <param name="evaluador">Disparo del Motor de Reglas (RN-06, N11).</param>
+    /// <param name="auditor">Bitacora de acciones sensibles (P12, P13).</param>
     /// <param name="unidadDeTrabajo">Punto de confirmacion (ADR-02).</param>
     /// <param name="mapeador">Proyeccion a DTO de salida.</param>
     /// <param name="registro">Registro de eventos.</param>
@@ -53,6 +55,7 @@ public sealed class AnularCalificacionInstructorUseCase
         IPracticaRepository practicaRepo,
         IContextoUsuario contexto,
         IEvaluadorDeReglas evaluador,
+        IRegistradorDeAuditoria auditor,
         IUnidadDeTrabajo unidadDeTrabajo,
         IMapper mapeador,
         ILogger<AnularCalificacionInstructorUseCase> registro)
@@ -61,6 +64,7 @@ public sealed class AnularCalificacionInstructorUseCase
         _practicaRepo = practicaRepo;
         _contexto = contexto;
         _evaluador = evaluador;
+        _auditor = auditor;
         _unidadDeTrabajo = unidadDeTrabajo;
         _mapeador = mapeador;
         _registro = registro;
@@ -104,6 +108,14 @@ public sealed class AnularCalificacionInstructorUseCase
         var practica = await _practicaRepo.ObtenerPorIdAsync(calificacion.PracticaId, ct);
         if (practica is not null)
             await _evaluador.PorCalificacionAnuladaAsync(practica, calificacion.Id, ct);
+
+        // RN-12. Es el unico caso de uso del proyecto con los dos enganches
+        // transversales de escritura, y los dos siguen la misma regla: registran y
+        // no confirman. La calificacion, el eventual cambio de estado que el Motor
+        // aplique, su notificacion y este asiento caen todos en el SaveChanges de
+        // abajo (P12, N11, ADR-02).
+        await _auditor.PorAnulacionAsync(
+            EntidadAuditada.CalificacionesInstructor, calificacion.Id, ct);
 
         await _unidadDeTrabajo.GuardarCambiosAsync(ct);
 

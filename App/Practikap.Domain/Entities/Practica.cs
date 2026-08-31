@@ -120,6 +120,31 @@ public class Practica
     public bool EstaActiva => Estado != EstadoPractica.Finalizada;
 
     /// <summary>
+    /// Indica si el par origen-destino es una transicion de avance, es decir una
+    /// de las que RN-05 permite ejecutar sin intervencion del Administrador.
+    /// </summary>
+    /// <param name="origen">Estado de partida.</param>
+    /// <param name="destino">Estado al que se quiere llegar.</param>
+    /// <returns>true si la transicion es un avance; false si es un retroceso.</returns>
+    /// <remarks>
+    /// Se expone para que la capa de Aplicacion pueda preguntar por la maquina de
+    /// estados <b>sin provocarla</b>. Lo usa el Motor de Reglas al aplicar el
+    /// estado por defecto de RN-06 (P17): un valor configurado que no fuera un
+    /// avance desde Pendiente haria que <see cref="CambiarEstado"/> lanzara
+    /// AutorizacionException y que un POST de calificacion respondiera 403, que
+    /// seria absurdo. El Motor comprueba y se degrada; no atrapa la excepcion.
+    ///
+    /// La alternativa era duplicar el par Pendiente-EnCurso en Aplicacion. Se
+    /// descarto: <see cref="TransicionesDeAvance"/> es la unica declaracion de
+    /// RN-05 del sistema y debe seguir siendolo. <see cref="CambiarEstado"/>
+    /// tambien consume este metodo, de modo que las dos lecturas de la tabla son
+    /// literalmente la misma.
+    /// </remarks>
+    public static bool EsAvance(EstadoPractica origen, EstadoPractica destino) =>
+        Array.Exists(TransicionesDeAvance,
+            t => t.Origen == origen && t.Destino == destino);
+
+    /// <summary>
     /// Cambia el estado de la practica respetando la maquina de estados de
     /// RN-05: la secuencia de avance es libre para el sistema, mientras que
     /// cualquier retroceso queda reservado al Administrador.
@@ -133,10 +158,7 @@ public class Practica
         if (nuevoEstado == Estado)
             throw new ReglaDeDominioException($"La practica ya se encuentra en estado {Estado}.", "RN-05");
 
-        var esAvance = Array.Exists(TransicionesDeAvance,
-            t => t.Origen == Estado && t.Destino == nuevoEstado);
-
-        if (!esAvance && !esAdministrador)
+        if (!EsAvance(Estado, nuevoEstado) && !esAdministrador)
             throw new AutorizacionException(
                 "El retroceso de estado de una practica esta reservado al Administrador.");
 
