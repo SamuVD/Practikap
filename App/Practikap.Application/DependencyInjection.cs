@@ -12,6 +12,7 @@ using Practikap.Application.UseCases.Observaciones;
 using Practikap.Application.UseCases.Practicas;
 using Practikap.Application.UseCases.Programas;
 using Practikap.Application.UseCases.Reglas;
+using Practikap.Application.UseCases.Reportes;
 using Practikap.Application.UseCases.Roles;
 using Practikap.Application.UseCases.Seguimientos;
 using Practikap.Application.UseCases.Usuarios;
@@ -112,6 +113,18 @@ public static class DependencyInjection
         services.AddScoped<ObtenerReglaUseCase>();
         services.AddScoped<ActualizarReglaUseCase>();
         services.AddScoped<CambiarActivaReglaUseCase>();
+        // Modulo M7 - Reportes y exportacion, paso 4.8. SerializadorDeFiltro,
+        // ArmadorDeReporte y FormateadorCsv no aparecen aqui: son estaticos, sin
+        // estado y sin dependencias, con el mismo criterio que
+        // ParticipantesDePractica.
+        //
+        // ExportarReporteUseCase es el unico caso de uso del proyecto que inyecta
+        // otro caso de uso (O23). Se registra igual que los demas, y funciona
+        // porque los dos son Scoped: comparten el DbContext de la peticion.
+        services.AddScoped<GenerarReporteUseCase>();
+        services.AddScoped<ListarReportesUseCase>();
+        services.AddScoped<ObtenerReporteUseCase>();
+        services.AddScoped<ExportarReporteUseCase>();
 
         // Punto unico de emision de notificaciones (L6). No es un caso de uso,
         // pero se enumera a mano por el mismo motivo que ellos: tiene alcance

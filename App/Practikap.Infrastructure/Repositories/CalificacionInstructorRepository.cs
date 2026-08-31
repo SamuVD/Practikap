@@ -95,6 +95,52 @@ internal sealed class CalificacionInstructorRepository : ICalificacionInstructor
 
     /// <inheritdoc />
     /// <remarks>
+    /// Un unico GROUP BY que MySQL resuelve en el servidor, en lugar de invocar
+    /// PromedioVigenteAsync una vez por practica: un reporte grupal de treinta
+    /// practicas costaria treinta consultas.
+    ///
+    /// El redondeo se aplica en memoria y no en la consulta, igual que en
+    /// PromedioVigenteAsync, para que las dos vias produzcan exactamente el mismo
+    /// numero. Redondear en SQL dejaria la definicion de promedio vigente en dos
+    /// dialectos distintos.
+    ///
+    /// Aqui no hace falta la proyeccion a decimal? que PromedioVigenteAsync si
+    /// necesita: aquella promedia una secuencia que puede venir vacia, y un
+    /// GROUP BY no devuelve grupos vacios. La practica sin calificaciones
+    /// computables simplemente no produce fila y queda fuera del diccionario.
+    ///
+    /// Los identificadores se materializan como List y no como array, por el
+    /// mismo motivo que documenta PracticaRepository.ListarPorIdsAsync: sobre un
+    /// int[], C# 14 elige MemoryExtensions.Contains(ReadOnlySpan&lt;int&gt;, int) y
+    /// el arbol de expresion no puede compilar un ReadOnlySpan.
+    /// </remarks>
+    public async Task<IReadOnlyDictionary<int, decimal>> PromediosPorPracticasAsync(
+        IEnumerable<int> practicaIds, CancellationToken ct)
+    {
+        var identificadores = practicaIds.Distinct().ToList();
+
+        if (identificadores.Count == 0)
+            return new Dictionary<int, decimal>();
+
+        var promedios = await _contexto.CalificacionesInstructor
+            .AsNoTracking()
+            .Where(calificacion => identificadores.Contains(calificacion.PracticaId)
+                                && !calificacion.Anulado)
+            .GroupBy(calificacion => calificacion.PracticaId)
+            .Select(grupo => new
+            {
+                PracticaId = grupo.Key,
+                Promedio = grupo.Average(calificacion => calificacion.Valor)
+            })
+            .ToListAsync(ct);
+
+        return promedios.ToDictionary(
+            fila => fila.PracticaId,
+            fila => Math.Round(fila.Promedio, 2, MidpointRounding.AwayFromZero));
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
     /// No confirma (ADR-02): el Id que devuelve solo queda poblado despues de que
     /// el caso de uso llame IUnidadDeTrabajo.GuardarCambiosAsync.
     ///
