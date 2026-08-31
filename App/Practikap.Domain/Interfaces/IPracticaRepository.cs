@@ -33,6 +33,33 @@ public interface IPracticaRepository
     Task<IReadOnlyList<Practica>> ListarTodasAsync(CancellationToken ct);
 
     /// <summary>
+    /// Lista las practicas cuyos identificadores se indican, sin restringir el
+    /// alcance. Es la via por la que un caso de uso obtiene instancias rastreadas
+    /// de practicas que ya selecciono por otro camino.
+    /// </summary>
+    /// <param name="ids">Identificadores de las practicas buscadas.</param>
+    /// <param name="ct">Token de cancelacion de la solicitud.</param>
+    /// <returns>Coleccion de solo lectura con las practicas encontradas.</returns>
+    /// <remarks>
+    /// A diferencia de los tres listados de alcance, este no lleva AsNoTracking y
+    /// no carga el grafo, y las dos cosas son a proposito.
+    ///
+    /// Rastreado porque estas instancias se vinculan a un Reporte nuevo (M7). Una
+    /// practica desatada que se agrega a la coleccion del reporte queda marcada
+    /// Added y EF Core intentaria reinsertarla, con lo que la generacion de un
+    /// reporte duplicaria filas en practicas en lugar de crear el vinculo.
+    ///
+    /// Sin grafo porque el consumidor ya tiene las practicas con sus navegaciones
+    /// cargadas, traidas por el listado de alcance que resolvio el filtro: aqui
+    /// solo hacen falta las entidades que el rastreador va a seguir. Incluir el
+    /// grafo repetiria las mismas cinco tablas sin que nadie las leyera.
+    ///
+    /// No decide alcance: RN-13 se resuelve antes, en el listado que produjo estos
+    /// identificadores (ADR-03).
+    /// </remarks>
+    Task<IReadOnlyList<Practica>> ListarPorIdsAsync(IEnumerable<int> ids, CancellationToken ct);
+
+    /// <summary>
     /// Indica si el aprendiz ya tiene una practica sin finalizar. Implementa la
     /// verificacion previa exigida por RN-04, que no puede resolverse con un
     /// indice unico porque MySQL no admite indices unicos parciales.

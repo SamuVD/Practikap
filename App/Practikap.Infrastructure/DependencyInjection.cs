@@ -113,6 +113,11 @@ public static class DependencyInjection
         // donde salen las reglas (ADR-04).
         services.AddScoped<IReglaRepository, ReglaRepository>();
 
+        // Modulo M7, Reportes, paso 4.8. Un solo registro para las dos tablas:
+        // reporte_practica es una relacion pura, se persiste como la coleccion de
+        // navegacion del reporte y por eso no tiene repositorio propio.
+        services.AddScoped<IReporteRepository, ReporteRepository>();
+
         var opcionesJwt = OpcionesJwt.Leer(configuration);
         services.AddSingleton(opcionesJwt);
 

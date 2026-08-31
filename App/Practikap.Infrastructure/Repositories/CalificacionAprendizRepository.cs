@@ -73,6 +73,49 @@ internal sealed class CalificacionAprendizRepository : ICalificacionAprendizRepo
 
     /// <inheritdoc />
     /// <remarks>
+    /// Un unico GROUP BY que MySQL resuelve en el servidor, en lugar de invocar
+    /// PromedioVigenteAsync una vez por practica.
+    ///
+    /// El redondeo se aplica en memoria, igual que en PromedioVigenteAsync, para
+    /// que las dos vias produzcan exactamente el mismo numero.
+    ///
+    /// Aqui no hace falta la proyeccion a decimal? que PromedioVigenteAsync si
+    /// necesita: un GROUP BY no devuelve grupos vacios, de modo que la practica
+    /// sin calificaciones computables no produce fila y queda fuera del
+    /// diccionario.
+    ///
+    /// Los identificadores se materializan como List y no como array, por el
+    /// mismo motivo que documenta PracticaRepository.ListarPorIdsAsync: sobre un
+    /// int[], C# 14 elige MemoryExtensions.Contains(ReadOnlySpan&lt;int&gt;, int) y
+    /// el arbol de expresion no puede compilar un ReadOnlySpan.
+    /// </remarks>
+    public async Task<IReadOnlyDictionary<int, decimal>> PromediosPorPracticasAsync(
+        IEnumerable<int> practicaIds, CancellationToken ct)
+    {
+        var identificadores = practicaIds.Distinct().ToList();
+
+        if (identificadores.Count == 0)
+            return new Dictionary<int, decimal>();
+
+        var promedios = await _contexto.CalificacionesAprendiz
+            .AsNoTracking()
+            .Where(calificacion => identificadores.Contains(calificacion.PracticaId)
+                                && !calificacion.Anulado)
+            .GroupBy(calificacion => calificacion.PracticaId)
+            .Select(grupo => new
+            {
+                PracticaId = grupo.Key,
+                Promedio = grupo.Average(calificacion => calificacion.Valor)
+            })
+            .ToListAsync(ct);
+
+        return promedios.ToDictionary(
+            fila => fila.PracticaId,
+            fila => Math.Round(fila.Promedio, 2, MidpointRounding.AwayFromZero));
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
     /// No confirma (ADR-02) y no escribe FechaRegistro, que la genera MySQL
     /// (RN-11).
     /// </remarks>

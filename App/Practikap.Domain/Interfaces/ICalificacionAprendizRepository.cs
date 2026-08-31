@@ -47,6 +47,38 @@ public interface ICalificacionAprendizRepository
     Task<decimal> PromedioVigenteAsync(int practicaId, CancellationToken ct);
 
     /// <summary>
+    /// Calcula de una sola vez el promedio vigente de varias practicas. Es el
+    /// insumo con el que M7 compone el contenido de un reporte (RF-08).
+    /// </summary>
+    /// <param name="practicaIds">Practicas consultadas.</param>
+    /// <param name="ct">Token de cancelacion de la solicitud.</param>
+    /// <returns>
+    /// Diccionario de practica a promedio. Una practica sin calificaciones
+    /// computables no aparece: el consumidor resuelve la ausencia como cero.
+    /// </returns>
+    /// <remarks>
+    /// Existe para no invocar PromedioVigenteAsync en un bucle. Un reporte grupal
+    /// puede consolidar decenas de practicas, y una consulta por cada una seria
+    /// el problema N+1 en el camino mas caliente del modulo. Aqui es un unico
+    /// GROUP BY que MySQL resuelve en el servidor.
+    ///
+    /// Aplica el mismo redondeo que PromedioVigenteAsync y la misma exclusion de
+    /// las anuladas (J5), de modo que el numero que informa un reporte es el mismo
+    /// que informa GET /api/calificaciones para la misma practica.
+    ///
+    /// La ausencia sustituye al cero que devuelve PromedioVigenteAsync, y no es
+    /// una divergencia de contrato: un GROUP BY no produce grupos vacios, y
+    /// fabricar la fila en cero aqui obligaria a recorrer los identificadores de
+    /// entrada una segunda vez para nada. El consumidor ya distingue los dos casos.
+    ///
+    /// Como todo lo demas en este contrato, no consulta la direccion contraria
+    /// (RN-10): el reporte pide los dos diccionarios por separado y los junta al
+    /// componer cada linea.
+    /// </remarks>
+    Task<IReadOnlyDictionary<int, decimal>> PromediosPorPracticasAsync(
+        IEnumerable<int> practicaIds, CancellationToken ct);
+
+    /// <summary>
     /// Registra una calificacion nueva. La marca de tiempo la fija el servidor
     /// conforme a RN-11.
     /// </summary>

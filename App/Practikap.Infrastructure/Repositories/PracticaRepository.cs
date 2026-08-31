@@ -55,6 +55,38 @@ internal sealed class PracticaRepository : IPracticaRepository
 
     /// <inheritdoc />
     /// <remarks>
+    /// Es la unica consulta de este repositorio que no pasa por ConGrafoCompleto y
+    /// la unica de lectura que no lleva AsNoTracking. Las dos ausencias son el
+    /// motivo por el que el metodo existe, y estan justificadas en el contrato.
+    ///
+    /// Los identificadores se materializan antes de la consulta porque Contains
+    /// sobre un IEnumerable diferido se traduciria a una expresion que EF Core no
+    /// puede parametrizar. La lista vacia corta sin ir a la base: un IN () no es
+    /// SQL valido en MySQL.
+    ///
+    /// Se materializan como List y no como array, y eso <b>no es indiferente</b>.
+    /// Sobre un int[], la resolucion de sobrecargas de C# 14 elige
+    /// MemoryExtensions.Contains(ReadOnlySpan&lt;int&gt;, int) en lugar de
+    /// Enumerable.Contains, y el arbol de expresion no puede compilar un
+    /// ReadOnlySpan como argumento generico: la consulta falla en tiempo de
+    /// ejecucion con un TypeLoadException que no menciona nada de esto. List no
+    /// tiene esa sobrecarga y la traduccion sale como el IN esperado.
+    /// </remarks>
+    public async Task<IReadOnlyList<Practica>> ListarPorIdsAsync(
+        IEnumerable<int> ids, CancellationToken ct)
+    {
+        var identificadores = ids.Distinct().ToList();
+
+        if (identificadores.Count == 0)
+            return [];
+
+        return await _contexto.Practicas
+            .Where(p => identificadores.Contains(p.Id))
+            .ToListAsync(ct);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
     /// Compara contra Finalizada en lugar de usar Practica.EstaActiva, que esta
     /// marcada como Ignore en PracticaConfiguration y no tiene traduccion a SQL.
     /// </remarks>
