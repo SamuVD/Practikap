@@ -29,10 +29,11 @@ namespace Practikap.Application.Validators.Reglas;
 /// extension de FluentValidation para el operador, y dos guardas que lanzan
 /// ReglaDeDominioException para los otros dos.
 ///
-/// <b>Las dos listas crecen desde aqui y solo desde aqui.</b> Cuando el 4.7
-/// cablee sus enganches o un paso posterior agregue un campo evaluable, se agrega
-/// el literal a un unico arreglo de este archivo y el mensaje de error se
-/// actualiza solo.
+/// <b>Las dos listas crecen desde aqui y solo desde aqui.</b> Cuando un paso
+/// posterior agregue un campo evaluable, se agrega el literal a un unico arreglo
+/// de este archivo, el mensaje de error se actualiza solo y el evaluador de la
+/// Ronda 2 lo recorre sin cambios. Lo unico que hay que agregar en paralelo es la
+/// medicion del campo nuevo en <c>EvaluadorDeReglas.ValorObservadoAsync</c>.
 /// </remarks>
 public static class ReglasDeMotor
 {
@@ -41,7 +42,17 @@ public static class ReglasDeMotor
     /// alimenta RN-09 desde las calificaciones; el segundo, la inactividad de
     /// seguimiento que M4 registra.
     /// </summary>
-    private static readonly string[] Campos =
+    /// <remarks>
+    /// Es publica, a diferencia de <see cref="Acciones"/>, porque el evaluador la
+    /// recorre para saber que medir (N13). Sin ella tendria que repetir los dos
+    /// literales, y la promesa de que las listas crecen desde este archivo y solo
+    /// desde el dejaria de ser cierta. Se expone como IReadOnlyList y no como
+    /// arreglo para que nadie pueda reescribirla desde fuera.
+    ///
+    /// El orden importa poco: el desempate entre campos lo resuelve la prioridad de
+    /// cada regla, no la posicion del campo (RN-07).
+    /// </remarks>
+    public static readonly IReadOnlyList<string> Campos =
     [
         "calificacion_acumulada",
         "dias_sin_seguimiento"
@@ -117,9 +128,9 @@ public static class ReglasDeMotor
     /// <see cref="ExigirCampoValido"/>.
     ///
     /// Es lo que impide configurar una consecuencia que nadie sabria ejecutar. Los
-    /// tres literales son los que el cableado de la Ronda 2 va a reconocer: marcar
-    /// la practica en riesgo (RN-09), notificar al instructor (RF-07, RN-09) o las
-    /// dos cosas.
+    /// tres literales son los que el cableado de la Ronda 2 reconoce en
+    /// <c>EvaluadorDeReglas.AplicarAsync</c>: marcar la practica en riesgo (RN-09),
+    /// notificar al instructor (RF-07, RN-09) o las dos cosas.
     /// </remarks>
     public static void ExigirAccionValida(string accionResultante)
     {

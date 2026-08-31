@@ -30,20 +30,20 @@ namespace Practikap.Application.Common;
 /// y 4.5 queda una sola linea legible.
 /// </para>
 /// <para>
-/// Como los tres primeros metodos no reciben texto libre, el contenido que
+/// Como los cuatro primeros metodos no reciben texto libre, el contenido que
 /// generan es una plantilla fija con identificadores numericos y cabe por
 /// construccion en el VARCHAR(255) de la columna. El unico que admite texto de
 /// afuera es <see cref="AdministrativaAsync"/>, y su validador acota el largo en
 /// esos mismos 255.
 /// </para>
 /// <para>
-/// <b>El tipo Riesgo no se emite aqui y este contrato no lo expone.</b> Es del
-/// Motor de Reglas, que llega en el paso 4.7: nace de una regla y no de una
-/// accion de usuario, y debe dejar poblado regla_id conforme a RN-09, para lo
-/// cual el Dominio ya trae la fabrica Notificacion.DesdeRegla. Ese es el enganche
-/// que L7 deja marcado. Cuando el Motor llegue, o consumira este contrato con un
-/// metodo propio o construira la entidad con esa fabrica, pero en ningun caso
-/// pasara por los cuatro metodos de abajo.
+/// <b>El tipo Riesgo entra por su propio metodo</b>, que es el que la Ronda 2 del
+/// paso 4.7 agrego y que L7 dejaba marcado. Nace de una regla y no de una accion
+/// de usuario, y debe dejar poblado regla_id conforme a RN-09, para lo cual el
+/// Dominio trae la fabrica Notificacion.DesdeRegla. De las cinco emisiones es la
+/// unica que no pasa por el constructor plano de la entidad, porque es la unica
+/// que tiene una regla que trazar. Su unico invocante es
+/// <see cref="IEvaluadorDeReglas"/>: ningun caso de uso la emite por su cuenta.
 /// </para>
 /// <para>
 /// El contrato es publico y su implementacion internal sealed, con el mismo
@@ -86,6 +86,26 @@ public interface IGeneradorDeNotificaciones
     /// <param name="practicaId">Practica que enmarca la conversacion.</param>
     /// <param name="ct">Token de cancelacion de la solicitud.</param>
     Task PorMensajeAsync(int destinatarioId, int practicaId, CancellationToken ct);
+
+    /// <summary>
+    /// Notifica al instructor que una regla activa del Motor coincidio sobre una
+    /// de sus practicas (RF-07, CU-06, RN-09, L7).
+    /// </summary>
+    /// <param name="destinatarioId">Instructor responsable de la practica.</param>
+    /// <param name="practicaId">Practica sobre la que la regla coincidio.</param>
+    /// <param name="reglaId">
+    /// Regla que produjo la alerta. Queda escrita en notificaciones.regla_id, que
+    /// es lo que RN-09 exige para que la alerta sea trazable hasta la
+    /// configuracion que la origino.
+    /// </param>
+    /// <param name="ct">Token de cancelacion de la solicitud.</param>
+    /// <remarks>
+    /// El texto es neutro a proposito y no afirma que la practica haya quedado En
+    /// riesgo: la misma notificacion sirve para la accion NotificarInstructor, que
+    /// avisa sin cambiar el estado. Quien decide que efectos se aplican es el
+    /// evaluador, y este metodo solo emite el aviso que le corresponda.
+    /// </remarks>
+    Task PorRiesgoAsync(int destinatarioId, int practicaId, int reglaId, CancellationToken ct);
 
     /// <summary>
     /// Emite la notificacion administrativa que el Administrador redacta a mano

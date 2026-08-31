@@ -40,9 +40,10 @@ public static class DependencyInjection
     /// Los casos de uso si se enumeran uno por uno, con alcance Scoped, porque
     /// dependen del DbContext (ADR-02). El modulo M1 aporta los once primeros.
     ///
-    /// La unica pieza que no es ni perfil, ni validador, ni caso de uso es
-    /// IGeneradorDeNotificaciones, que el paso 4.6 registra al final por la misma
-    /// razon de alcance (L6).
+    /// Las dos piezas que no son ni perfil, ni validador, ni caso de uso van al
+    /// final, registradas por la misma razon de alcance:
+    /// IGeneradorDeNotificaciones, que aporto el paso 4.6 (L6), y
+    /// IEvaluadorDeReglas, que aporta la Ronda 2 del 4.7 (N11).
     /// </remarks>
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
@@ -101,9 +102,11 @@ public static class DependencyInjection
         services.AddScoped<ListarNotificacionesUseCase>();
         services.AddScoped<CrearNotificacionAdministrativaUseCase>();
         services.AddScoped<MarcarNotificacionLeidaUseCase>();
-        // Modulo M2 - Motor de Reglas, paso 4.7. El evaluador no aparece aqui: es
+        // Modulo M2 - Motor de Reglas, paso 4.7. MotorDeReglas no aparece aqui: es
         // estatico, sin estado y vive en el Dominio (ADR-04). Lo unico que necesita
-        // alcance Scoped es lo que carga y persiste las reglas.
+        // alcance Scoped es lo que carga y persiste las reglas, y el servicio que
+        // lo dispara, que se registra mas abajo con los otros dos que no son casos
+        // de uso.
         services.AddScoped<CrearReglaUseCase>();
         services.AddScoped<ListarReglasUseCase>();
         services.AddScoped<ObtenerReglaUseCase>();
@@ -116,6 +119,13 @@ public static class DependencyInjection
         // (ADR-02, ADR-05). Es lo que permite que la notificacion de un evento se
         // confirme en la misma transaccion que el evento.
         services.AddScoped<IGeneradorDeNotificaciones, GeneradorDeNotificaciones>();
+
+        // Punto unico de disparo del Motor de Reglas (N11), enumerado a mano por
+        // la misma razon de alcance: sus cinco colaboradores comparten el DbContext
+        // de la peticion (ADR-02, ADR-05). Es lo que permite que el cambio de
+        // estado de la practica y su notificacion de riesgo se confirmen en la
+        // misma transaccion que la calificacion que los disparo.
+        services.AddScoped<IEvaluadorDeReglas, EvaluadorDeReglas>();
 
         return services;
     }
