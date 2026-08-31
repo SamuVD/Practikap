@@ -62,14 +62,36 @@ internal sealed class GeneradorDeNotificaciones : IGeneradorDeNotificaciones
             ct);
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Unico metodo que no pasa por <see cref="RegistrarAsync"/>. Aquel usa el
+    /// constructor plano de la entidad, que deja regla_id en null; esta emision
+    /// nace de una regla y tiene que trazarla, asi que construye con la fabrica
+    /// Notificacion.DesdeRegla, que ademas fija el tipo Riesgo por su cuenta
+    /// (RN-09).
+    /// </remarks>
+    public async Task PorRiesgoAsync(
+        int destinatarioId, int practicaId, int reglaId, CancellationToken ct)
+    {
+        var notificacion = Notificacion.DesdeRegla(
+            destinatarioId,
+            reglaId,
+            $"El Motor de Reglas activo la regla {reglaId} sobre la practica {practicaId}.");
+
+        await _notificacionRepo.AgregarAsync(notificacion, ct);
+
+        // Sin GuardarCambiosAsync, igual que los otros cuatro. Confirma el caso de
+        // uso que produjo el evento (L6, ADR-02).
+    }
+
+    /// <inheritdoc />
     public async Task<Notificacion> AdministrativaAsync(
         int destinatarioId, string contenido, CancellationToken ct) =>
         await RegistrarAsync(destinatarioId, TipoNotificacion.Administrativa, contenido, ct);
 
     /// <summary>
     /// Construye la notificacion y la registra, sin confirmar. Es el unico punto
-    /// del sistema donde se instancia una <see cref="Notificacion"/> que no viene
-    /// del Motor.
+    /// del sistema donde se instancia una <see cref="Notificacion"/> con el
+    /// constructor plano, es decir sin regla que trazar.
     /// </summary>
     /// <param name="destinatarioId">Usuario al que va dirigida.</param>
     /// <param name="tipo">Origen funcional del aviso.</param>

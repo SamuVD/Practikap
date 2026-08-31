@@ -20,6 +20,10 @@ namespace Practikap.Application.UseCases.Calificaciones;
 /// Como alla, la guarda de la doble anulacion vive en CalificacionAprendiz.Anular
 /// y no aqui, el registro anulado sigue saliendo en el listado con su marca, y lo
 /// que cambia es el promedio vigente de esta direccion (J5).
+///
+/// <b>Donde deja de ser gemelo es en el Motor:</b> el de la direccion contraria lo
+/// dispara y este no (N12). El promedio que esta anulacion mueve es el de las
+/// evaluaciones que el aprendiz hizo de su instructor, y RN-09 no lo mira.
 /// </remarks>
 public sealed class AnularCalificacionAprendizUseCase
 {
@@ -68,10 +72,11 @@ public sealed class AnularCalificacionAprendizUseCase
         calificacion.Anular(_contexto.UsuarioId);
 
         await _calificacionRepo.ActualizarAsync(calificacion, ct);
-        await _unidadDeTrabajo.GuardarCambiosAsync(ct);
 
-        // Punto de enganche del Motor de Reglas (RN-06). El Motor llega en el
-        // paso 4.7: aqui no se implementa ni se simula.
+        // No hay llamada al Motor, a diferencia de la direccion contraria. La
+        // Ronda 2 del 4.7 retiro de aqui el enganche que el 4.4 habia marcado
+        // (N12).
+        await _unidadDeTrabajo.GuardarCambiosAsync(ct);
 
         _registro.LogInformation(
             "Evaluacion del aprendiz {CalificacionId} anulada por el administrador {AdministradorId}.",

@@ -30,9 +30,13 @@ namespace Practikap.Application.UseCases.Calificaciones;
 /// FechaRegistro con setter privado, y la columna esta mapeada como generada por
 /// la base.
 ///
-/// Notifica al aprendiz calificado (RF-07, L5). El paso 4.6 cableo el enganche de
-/// notificacion que este archivo tenia marcado desde el 4.4; el del Motor de
-/// Reglas, que es otro, sigue abierto hasta el 4.7 (L7).
+/// Notifica al aprendiz calificado (RF-07, L5). El paso 4.6 cableo ese enganche,
+/// que el 4.4 dejo marcado, y la Ronda 2 del 4.7 cablea el segundo, que es otro: el
+/// del Motor de Reglas (RN-06, L7). Los dos son puntos de registro sin
+/// confirmacion, y por eso los dos van antes de GuardarCambiosAsync.
+///
+/// Es uno de los dos unicos disparadores del Motor (N12). La direccion contraria,
+/// con la que el Aprendiz evalua a su Instructor, no dispara.
 /// </remarks>
 public sealed class RegistrarCalificacionInstructorUseCase
 {
@@ -40,6 +44,7 @@ public sealed class RegistrarCalificacionInstructorUseCase
     private readonly IPracticaRepository _practicaRepo;
     private readonly IContextoUsuario _contexto;
     private readonly IGeneradorDeNotificaciones _generador;
+    private readonly IEvaluadorDeReglas _evaluador;
     private readonly IUnidadDeTrabajo _unidadDeTrabajo;
     private readonly IValidator<CrearCalificacionRequest> _validador;
     private readonly IMapper _mapeador;
@@ -50,6 +55,7 @@ public sealed class RegistrarCalificacionInstructorUseCase
     /// <param name="practicaRepo">Acceso a practicas, para las puertas de J4 y de autoria.</param>
     /// <param name="contexto">Identidad del solicitante (ADR-03).</param>
     /// <param name="generador">Emision de la notificacion de RF-07 (L5, L6).</param>
+    /// <param name="evaluador">Disparo del Motor de Reglas (RN-06, N11).</param>
     /// <param name="unidadDeTrabajo">Punto de confirmacion (ADR-02).</param>
     /// <param name="validador">Validador de forma del DTO (RN-15).</param>
     /// <param name="mapeador">Proyeccion a DTO de salida.</param>
@@ -59,6 +65,7 @@ public sealed class RegistrarCalificacionInstructorUseCase
         IPracticaRepository practicaRepo,
         IContextoUsuario contexto,
         IGeneradorDeNotificaciones generador,
+        IEvaluadorDeReglas evaluador,
         IUnidadDeTrabajo unidadDeTrabajo,
         IValidator<CrearCalificacionRequest> validador,
         IMapper mapeador,
@@ -68,6 +75,7 @@ public sealed class RegistrarCalificacionInstructorUseCase
         _practicaRepo = practicaRepo;
         _contexto = contexto;
         _generador = generador;
+        _evaluador = evaluador;
         _unidadDeTrabajo = unidadDeTrabajo;
         _validador = validador;
         _mapeador = mapeador;
@@ -109,19 +117,28 @@ public sealed class RegistrarCalificacionInstructorUseCase
         // notificacion entran en el mismo SaveChanges y en la misma transaccion.
         await _generador.PorCalificacionAsync(practica.AprendizId, practica.Id, ct);
 
+        // El enganche del Motor (RN-06), que es el otro y llega con la Ronda 2.
+        // CU-05 pide que el Motor evalue el estado de la practica despues de cada
+        // calificacion y, si el promedio cae bajo el umbral, la marque En riesgo y
+        // emita su notificacion de tipo Riesgo con regla_id poblado (RN-09).
+        //
+        // Va antes de la confirmacion y no despues, que es donde el 4.4 lo habia
+        // dejado marcado. El evaluador solo registra, de modo que la calificacion,
+        // el cambio de estado y las dos notificaciones caen en un solo SaveChanges
+        // (N11, ADR-02). Y por eso recibe el valor recien registrado: todavia no
+        // esta en la base, y el promedio que MySQL calcularia quedaria una
+        // calificacion atrasado (N15).
+        //
+        // practica viene rastreada de AccesoALaPractica, asi que MarcarEnRiesgo se
+        // persiste sin nada mas. Esa misma puerta ya garantizo que el estado sea En
+        // curso o En riesgo, con lo que el Motor nunca ve una practica Pendiente ni
+        // Finalizada por este camino.
+        await _evaluador.PorCalificacionRegistradaAsync(practica, calificacion.Valor, ct);
+
         // Hasta aqui calificacion.Id vale 0 y FechaRegistro es el valor por
         // defecto de DateTime. La confirmacion asigna el primero y trae de vuelta
         // la segunda, que es la que escribio MySQL.
         await _unidadDeTrabajo.GuardarCambiosAsync(ct);
-
-        // Punto de enganche del Motor de Reglas (RN-06), que sigue abierto y es
-        // distinto del anterior. CU-05 pide que el Motor evalue el estado de la
-        // practica despues de cada calificacion y, si el promedio cae bajo el
-        // umbral, la marque En riesgo y emita su propia notificacion, de tipo
-        // Riesgo y con regla_id poblado (RN-09). Ese tipo no se emite en este
-        // paso: L7 lo deja para el 4.7, cuando el Motor consuma
-        // PromedioVigenteAsync de este mismo repositorio y la fabrica
-        // Notificacion.DesdeRegla.
 
         _registro.LogInformation(
             "Calificacion {CalificacionId} del instructor {InstructorId} registrada sobre la practica {PracticaId}.",

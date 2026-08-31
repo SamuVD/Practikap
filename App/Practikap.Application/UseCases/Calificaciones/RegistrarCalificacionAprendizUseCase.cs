@@ -29,8 +29,13 @@ namespace Practikap.Application.UseCases.Calificaciones;
 ///
 /// Notifica al instructor evaluado (RF-07, L5). Es la unica diferencia del
 /// enganche respecto de la direccion contraria: mismo metodo del generador y
-/// mismo texto, otro destinatario. El del Motor de Reglas, que es otro enganche,
-/// sigue abierto hasta el 4.7 (L7).
+/// mismo texto, otro destinatario.
+///
+/// <b>No dispara el Motor de Reglas, y esa es la asimetria deliberada de N12.</b>
+/// La direccion contraria si lo hace. RN-09 mide el riesgo del aprendiz, y la nota
+/// que el aprendiz le pone a su instructor no lo mide: marcar la practica En riesgo
+/// porque el aprendiz califico bajo invertiria el sentido de la regla y castigaria
+/// al aprendiz por ejercer la evaluacion que RF-06 le concede.
 /// </remarks>
 public sealed class RegistrarCalificacionAprendizUseCase
 {
@@ -108,12 +113,11 @@ public sealed class RegistrarCalificacionAprendizUseCase
         // transaccion.
         await _generador.PorCalificacionAsync(practica.InstructorId, practica.Id, ct);
 
+        // No hay llamada al Motor, a diferencia de la direccion contraria. La
+        // Ronda 2 del 4.7 retiro de aqui el enganche que el 4.4 habia marcado, por
+        // la razon que N12 fija y que el remarks de la clase explica: esta
+        // calificacion no mide al aprendiz.
         await _unidadDeTrabajo.GuardarCambiosAsync(ct);
-
-        // Punto de enganche del Motor de Reglas (RN-06), igual que en la
-        // direccion contraria y distinto del anterior. El Motor llega en el paso
-        // 4.7, y con el la notificacion de tipo Riesgo, que L7 deja fuera de este
-        // paso: aqui no se implementa ni se simula.
 
         _registro.LogInformation(
             "Evaluacion {CalificacionId} del aprendiz {AprendizId} registrada sobre la practica {PracticaId}.",

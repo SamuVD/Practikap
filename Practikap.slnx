@@ -5,4 +5,7 @@
     <Project Path="App/Practikap.Domain/Practikap.Domain.csproj" />
     <Project Path="App/Practikap.Infrastructure/Practikap.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Practikap.Domain.Tests/Practikap.Domain.Tests.csproj" />
+  </Folder>
 </Solution>
