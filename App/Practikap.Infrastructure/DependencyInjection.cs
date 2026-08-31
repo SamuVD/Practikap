@@ -118,6 +118,14 @@ public static class DependencyInjection
         // navegacion del reporte y por eso no tiene repositorio propio.
         services.AddScoped<IReporteRepository, ReporteRepository>();
 
+        // Modulo M8, Panel de Administracion, paso 4.9. Dos registros y no cuatro:
+        // usuarios, programas y reglas ya tienen el suyo mas arriba, y M8 no los
+        // reimplementa (P1). IProgramaRepository es el que la seccion de M3 anota
+        // que se comparte. La bitacora se escribe en la Ronda 2; esta ronda solo la
+        // lee, y por eso su tabla sale vacia.
+        services.AddScoped<IConfiguracionRepository, ConfiguracionRepository>();
+        services.AddScoped<IAuditoriaRepository, AuditoriaRepository>();
+
         var opcionesJwt = OpcionesJwt.Leer(configuration);
         services.AddSingleton(opcionesJwt);
 
