@@ -13,8 +13,9 @@ namespace Practikap.Application.DTOs.Reportes;
 /// Lleva PracticaId pero no los identificadores de ficha, programa, empresa,
 /// instructor y aprendiz, y ahi diverge de PracticaResponse, que si los lleva.
 /// La razon es el destino de cada uno: aquella alimenta pantallas que construyen
-/// enlaces, y esta es una fila de salida que la Ronda 2 exporta a CSV. Un
-/// identificador que nadie va a seguir es una columna de ruido en el archivo.
+/// enlaces, y esta es una fila de salida que FormateadorCsv escribe tal cual en el
+/// archivo. Un identificador que nadie va a seguir seria una columna de ruido, y
+/// las doce que quedan son exactamente las doce columnas del CSV, en este orden.
 ///
 /// Los dos promedios son los del momento de la consulta, excluyen las anuladas
 /// (J5) y salen del mismo calculo que informa GET /api/calificaciones. Un

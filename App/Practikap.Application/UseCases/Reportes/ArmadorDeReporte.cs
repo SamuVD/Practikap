@@ -34,8 +34,8 @@ internal static class ArmadorDeReporte
     /// <remarks>
     /// El orden es ascendente por identificador, a diferencia de los listados de
     /// PracticaRepository, que son descendentes. Un listado muestra primero lo
-    /// ultimo que paso; un reporte se lee de arriba abajo, y el CSV que la Ronda 2
-    /// exporta tiene que salir en el mismo orden que este JSON.
+    /// ultimo que paso; un reporte se lee de arriba abajo. FormateadorCsv no
+    /// reordena nada: el archivo sale en este orden porque sale de aqui.
     ///
     /// Una practica ausente de un diccionario vale cero: es lo que documenta O10 y
     /// significa que esa direccion no tiene ninguna calificacion computable.
