@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Gestión de usuarios · Practikap</title>
+
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../css/practikap.css">
+</head>
+
+<body>
+    <!--
+        Solo Administrador. La guarda de sesion.js saca a los otros dos roles
+        antes de disparar ninguna peticion, y el servidor responde 403 por su
+        cuenta a quien fuerce la llamada: son las dos mitades de
+        Doc_Arquitectura 3.4 y las dos hacen falta.
+
+        No hay ningun boton de borrar. El sistema no expone DELETE: las cuentas
+        se dan de baja con PATCH sobre el sub-recurso estado (decision F3).
+    -->
+    <div id="pk-nav"></div>
+
+    <main class="pk-contenido">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h1 class="pk-titulo mb-0">Gestión de usuarios</h1>
+            <button type="button" class="btn btn-primary" id="pk-abrir-alta">
+                Nuevo usuario
+            </button>
+        </div>
+
+        <div id="pk-banda" class="alert d-none mt-3" role="alert"></div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <div class="row g-2 align-items-end">
+                    <div class="col-12 col-sm-auto">
+                        <label for="pk-filtro-rol" class="form-label mb-1">Filtrar por rol</label>
+                        <select class="form-select" id="pk-filtro-rol">
+                            <option value="">Todos los roles</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-striped align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Id</th>
+                            <th scope="col">Nombre</th>
+                            <th scope="col">Correo</th>
+                            <th scope="col">Teléfono</th>
+                            <th scope="col">Rol</th>
+                            <th scope="col">Estado</th>
+                            <th scope="col">Alta</th>
+                            <th scope="col">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pk-cuerpo-tabla"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Alta de usuario · POST /api/usuarios -->
+    <div class="modal fade" id="pk-modal-alta" tabindex="-1" aria-hidden="true"
+         aria-labelledby="pk-titulo-alta">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title h5" id="pk-titulo-alta">Nuevo usuario</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"
+                            aria-label="Cerrar"></button>
+                </div>
+
+                <form id="pk-formulario-alta" novalidate>
+                    <div class="modal-body">
+                        <div id="pk-banda-alta" class="alert d-none" role="alert"></div>
+
+                        <div class="mb-3">
+                            <label for="pk-alta-rol" class="form-label">Rol</label>
+                            <select class="form-select" id="pk-alta-rol" name="RolId"></select>
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="pk-alta-correo" class="form-label">Correo</label>
+                            <input type="email" class="form-control" id="pk-alta-correo"
+                                   name="Correo">
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="pk-alta-contrasena" class="form-label">Contraseña</label>
+                            <input type="password" class="form-control" id="pk-alta-contrasena"
+                                   name="Contrasena" autocomplete="new-password">
+                            <div class="form-text">
+                                Entre 8 y 72 caracteres, con al menos una letra y un dígito.
+                            </div>
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="pk-alta-nombre" class="form-label">Nombre</label>
+                            <input type="text" class="form-control" id="pk-alta-nombre"
+                                   name="Nombre">
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="pk-alta-apellido" class="form-label">Apellido</label>
+                            <input type="text" class="form-control" id="pk-alta-apellido"
+                                   name="Apellido">
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="pk-alta-telefono" class="form-label">Teléfono</label>
+                            <input type="tel" class="form-control" id="pk-alta-telefono"
+                                   name="Telefono">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-primary"
+                                data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="pk-crear">
+                            Crear usuario
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edicion · PUT /api/usuarios/{id}, PATCH /rol y PATCH /contrasena -->
+    <div class="modal fade" id="pk-modal-edicion" tabindex="-1" aria-hidden="true"
+         aria-labelledby="pk-titulo-edicion">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title h5" id="pk-titulo-edicion">Editar usuario</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"
+                            aria-label="Cerrar"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div id="pk-banda-edicion" class="alert d-none" role="alert"></div>
+
+                    <p class="text-body-secondary small" id="pk-edicion-resumen"></p>
+
+                    <h3 class="h6">Datos personales</h3>
+                    <form id="pk-formulario-edicion" novalidate class="mb-4">
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6">
+                                <label for="pk-edicion-nombre" class="form-label">Nombre</label>
+                                <input type="text" class="form-control" id="pk-edicion-nombre"
+                                       name="Nombre">
+                                <div class="invalid-feedback"></div>
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <label for="pk-edicion-apellido" class="form-label">Apellido</label>
+                                <input type="text" class="form-control" id="pk-edicion-apellido"
+                                       name="Apellido">
+                                <div class="invalid-feedback"></div>
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <label for="pk-edicion-telefono" class="form-label">Teléfono</label>
+                                <input type="tel" class="form-control" id="pk-edicion-telefono"
+                                       name="Telefono">
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary mt-3" id="pk-guardar-edicion">
+                            Guardar datos
+                        </button>
+                    </form>
+
+                    <hr>
+
+                    <h3 class="h6">Rol</h3>
+                    <form id="pk-formulario-rol" novalidate class="mb-4">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-12 col-md-6">
+                                <label for="pk-edicion-rol" class="form-label">Rol asignado</label>
+                                <select class="form-select" id="pk-edicion-rol"
+                                        name="RolId"></select>
+                                <div class="invalid-feedback"></div>
+                            </div>
+
+                            <div class="col-12 col-md-auto">
+                                <button type="submit" class="btn btn-primary" id="pk-guardar-rol">
+                                    Cambiar rol
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <hr>
+
+                    <h3 class="h6">Restablecer contraseña</h3>
+                    <p class="text-body-secondary small">
+                        No pide la contraseña actual y no cierra la sesión del titular.
+                        Es la única salida cuando alguien la olvida.
+                    </p>
+                    <form id="pk-formulario-restablecer" novalidate>
+                        <div class="row g-3 align-items-end">
+                            <div class="col-12 col-md-6">
+                                <label for="pk-edicion-contrasena" class="form-label">
+                                    Contraseña nueva
+                                </label>
+                                <input type="password" class="form-control"
+                                       id="pk-edicion-contrasena" name="ContrasenaNueva"
+                                       autocomplete="new-password">
+                                <div class="invalid-feedback"></div>
+                            </div>
+
+                            <div class="col-12 col-md-auto">
+                                <button type="submit" class="btn btn-primary"
+                                        id="pk-guardar-restablecer">
+                                    Restablecer
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-primary"
+                            data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/config.js"></script>
+    <script src="../js/sesion.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/nav.js"></script>
+    <script src="../js/enumerados.js"></script>
+    <script src="../js/pagina-gestion-usuarios.js"></script>
+</body>
+
+</html>
